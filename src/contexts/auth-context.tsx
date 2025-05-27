@@ -35,8 +35,8 @@ const getMockRole = (email?: string | null): UserRole => {
   if (!email) return null;
   if (email.includes('admin')) return 'admin';
   if (email.includes('doctor')) return 'doctor';
-  if (email.includes('patient')) return 'patient';
-  return 'patient'; // Default role for demo
+  // For 'guest@example.com' or any other non-admin/doctor email, default to 'patient'
+  return 'patient'; 
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -47,13 +47,47 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
       if (firebaseUser) {
-        // Simulate fetching role after user logs in
+        setUser(firebaseUser);
         const userRole = getMockRole(firebaseUser.email);
         setRole(userRole); 
       } else {
-        setRole(null);
+        // Simulate a guest user to bypass login and see stuff
+        const mockGuestUser = {
+          uid: 'guest-preview-user',
+          email: 'guest@example.com', // This email will be used by getMockRole
+          displayName: 'Guest Preview',
+          photoURL: null,
+          emailVerified: true,
+          isAnonymous: true, // Mark as anonymous for clarity
+          // --- Minimal FirebaseUser fields to satisfy the type ---
+          // UserInfo part
+          phoneNumber: null,
+          providerId: 'guest',
+          // User methods (noop for mock)
+          delete: async () => { console.warn("Mock user delete called"); },
+          getIdToken: async (_forceRefresh?: boolean) => "mock-guest-token",
+          getIdTokenResult: async (_forceRefresh?: boolean) => ({
+            token: "mock-guest-token",
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            claims: {} as any,
+            authTime: new Date().toISOString(),
+            expirationTime: new Date(Date.now() + 3600 * 1000).toISOString(),
+            issuedAtTime: new Date().toISOString(),
+            signInProvider: null,
+            signInSecondFactor: null,
+          }),
+          reload: async () => { console.warn("Mock user reload called"); },
+          toJSON: () => ({ uid: 'guest-preview-user', email: 'guest@example.com', displayName: 'Guest Preview' }),
+          // User properties
+          metadata: {}, // Add basic metadata if needed by other parts, e.g. creationTime, lastSignInTime
+          providerData: [],
+          refreshToken: 'mock-guest-refresh-token',
+          tenantId: null,
+        } as FirebaseUser; // Cast to FirebaseUser type
+
+        setUser(mockGuestUser);
+        setRole(getMockRole(mockGuestUser.email)); // This should assign 'patient' role
       }
       setLoading(false);
     });
@@ -81,9 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-      // Assign a default role upon signup, e.g., 'patient'
-      // In a real app, role assignment might be a separate admin step or based on signup flow
-      const userRole = getMockRole(userCredential.user.email); // Or just default to 'patient'
+      const userRole = getMockRole(userCredential.user.email); 
       setRole(userRole);
       setUser(userCredential.user);
       return userCredential.user;
@@ -101,7 +133,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await signOut(auth);
       setUser(null);
       setRole(null);
-      router.push('/login');
+      // After logout, to re-enable guest mode if desired, a page refresh might be needed
+      // or we could explicitly set the guest user again here.
+      // For now, push to login, standard behavior.
+      router.push('/login'); 
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
@@ -128,6 +163,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const assignRole = (newRole: UserRole) => {
     // This is a mock function for demo UI. In a real app, this would update Firebase custom claims or a database.
     setRole(newRole);
+     if (user && user.email === 'guest@example.com') {
+      // Potentially update the mock user's perceived role if needed, though getMockRole is static
+      console.warn("Assigning role to guest user. This is for UI demo only.");
+    }
   };
 
   const sendPasswordReset = async (email: string) => {
