@@ -1,23 +1,69 @@
 
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Clock, Stethoscope, MoreVertical, Edit, X } from "lucide-react";
+import { CalendarDays, Clock, MoreVertical, Edit, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import { getAppointments, updateAppointmentStatusEntry, type Appointment } from '@/lib/appointment-service';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/auth-context'; // To filter by patient
 
-const mockAppointments = [
-  { id: "appt1", doctor: "Dr. Emily Carter", specialty: "Cardiology", date: "2023-07-15", time: "10:30 AM", status: "Approved" },
-  { id: "appt2", doctor: "Dr. Johnathan Lee", specialty: "Pediatrics", date: "2023-07-20", time: "02:00 PM", status: "Pending" },
-  { id: "appt3", doctor: "Dr. Sarah Miller", specialty: "Dermatology", date: "2023-06-10", time: "09:00 AM", status: "Cancelled" },
-  { id: "appt4", doctor: "Dr. Emily Carter", specialty: "Cardiology", date: "2023-05-01", time: "11:00 AM", status: "Completed" },
-];
 
 export default function PatientAppointmentsPage() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const { toast } = useToast();
+  const { user } = useAuth(); // Get current user to filter appointments
+
+  const fetchAppointments = useCallback(() => {
+    if (user) {
+      const allAppointments = getAppointments();
+      // Filter appointments for the current patient.
+      // This assumes patientName was stored accurately during booking.
+      const patientName = user.displayName || user.email?.split('@')[0] || "Guest Patient";
+      const userAppointments = allAppointments.filter(
+        appt => appt.patientName === patientName
+      ).sort((a,b) => new Date(b.bookedAt).getTime() - new Date(a.bookedAt).getTime()); // Show newest first
+      setAppointments(userAppointments);
+    } else {
+      setAppointments([]);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchAppointments();
+  }, [fetchAppointments]);
+
+  const handleCancelAppointment = (appointmentId: string) => {
+    const updatedAppointment = updateAppointmentStatusEntry(appointmentId, "Cancelled");
+    if (updatedAppointment) {
+      toast({
+        title: "Appointment Cancelled",
+        description: `Your appointment with ${updatedAppointment.doctorName} has been cancelled.`,
+      });
+      fetchAppointments(); // Re-fetch to update list
+    } else {
+      toast({
+        title: "Error",
+        description: "Could not cancel appointment. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleReschedule = () => {
+    toast({
+      title: "Not Implemented",
+      description: "Reschedule functionality is not yet available.",
+    });
+  };
   
   const getStatusBadgeVariant = (status: string) => {
     switch (status.toLowerCase()) {
@@ -33,7 +79,6 @@ export default function PatientAppointmentsPage() {
     }
   };
 
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">My Appointments</h1>
@@ -43,16 +88,17 @@ export default function PatientAppointmentsPage() {
           <CardDescription>View your past, upcoming, and cancelled appointments.</CardDescription>
         </CardHeader>
         <CardContent>
-          {mockAppointments.length > 0 ? (
+          {appointments.length > 0 ? (
             <ul className="space-y-4">
-              {mockAppointments.map(appt => (
+              {appointments.map(appt => (
                 <li key={appt.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-muted/50 transition-colors">
                   <div className="flex-1 mb-3 sm:mb-0">
-                    <p className="font-semibold text-lg text-foreground">{appt.doctor} <span className="text-sm text-muted-foreground">({appt.specialty})</span></p>
+                    <p className="font-semibold text-lg text-foreground">{appt.doctorName} <span className="text-sm text-muted-foreground">({appt.specialty})</span></p>
                     <div className="flex items-center text-sm text-muted-foreground mt-1">
-                        <CalendarDays className="mr-1.5 h-4 w-4" /> {appt.date}
+                        <CalendarDays className="mr-1.5 h-4 w-4" /> {new Date(appt.date).toLocaleDateString()} {/* Format date for display */}
                         <Clock className="ml-3 mr-1.5 h-4 w-4" /> {appt.time}
                     </div>
+                    {appt.reason && <p className="text-sm text-muted-foreground mt-1">Reason: {appt.reason}</p>}
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className={`${getStatusBadgeVariant(appt.status)} text-white text-xs`}>{appt.status}</Badge>
@@ -64,8 +110,8 @@ export default function PatientAppointmentsPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {appt.status === "Pending" && <DropdownMenuItem><Edit className="mr-2 h-4 w-4"/>Reschedule</DropdownMenuItem>}
-                          <DropdownMenuItem className="text-red-500 focus:text-red-500 focus:bg-red-500/10"><X className="mr-2 h-4 w-4"/>Cancel Appointment</DropdownMenuItem>
+                          {appt.status === "Pending" && <DropdownMenuItem onClick={handleReschedule}><Edit className="mr-2 h-4 w-4"/>Reschedule</DropdownMenuItem>}
+                          <DropdownMenuItem onClick={() => handleCancelAppointment(appt.id)} className="text-red-500 focus:text-red-500 focus:bg-red-500/10"><X className="mr-2 h-4 w-4"/>Cancel Appointment</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}

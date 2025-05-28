@@ -11,18 +11,14 @@ import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, CalendarCheck, Clock, FileText } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
+import { addAppointmentEntry, mockDoctorsList, type DoctorInfo } from '@/lib/appointment-service';
+import { useAuth } from '@/contexts/auth-context';
 
-const mockDoctors = [
-  { id: "d1", name: "Dr. Emily Carter (Cardiology)" },
-  { id: "d2", name: "Dr. Johnathan Lee (Pediatrics)" },
-  { id: "d3", name: "Dr. Sarah Miller (Dermatology)" },
-  { id: "d4", name: "Dr. David Wilson (Neurology)" }, // Added to match doctors page
-];
-
-const availableTimeSlots = ["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM"];
+const availableTimeSlots = ["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM", "04:00 PM"];
 
 export default function BookAppointmentPage() {
-  const [selectedDoctor, setSelectedDoctor] = useState<string | undefined>();
+  const { user } = useAuth();
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string | undefined>();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | undefined>();
   const [reason, setReason] = useState("");
@@ -31,13 +27,24 @@ export default function BookAppointmentPage() {
 
   useEffect(() => {
     const doctorIdFromQuery = searchParams.get('doctorId');
-    if (doctorIdFromQuery && mockDoctors.find(doc => doc.id === doctorIdFromQuery)) {
-      setSelectedDoctor(doctorIdFromQuery);
+    if (doctorIdFromQuery && mockDoctorsList.find(doc => doc.id === doctorIdFromQuery)) {
+      setSelectedDoctorId(doctorIdFromQuery);
     }
   }, [searchParams]);
 
+  const resetForm = () => {
+    // Do not reset doctor if it came from query param initially
+    const doctorIdFromQuery = searchParams.get('doctorId');
+    if (!doctorIdFromQuery) {
+        setSelectedDoctorId(undefined);
+    }
+    setSelectedDate(new Date());
+    setSelectedTime(undefined);
+    setReason("");
+  };
+
   const handleBooking = () => {
-    if (!selectedDoctor || !selectedDate || !selectedTime) {
+    if (!selectedDoctorId || !selectedDate || !selectedTime) {
       toast({
         title: "Missing Information",
         description: "Please select a doctor, date, and time slot.",
@@ -45,16 +52,35 @@ export default function BookAppointmentPage() {
       });
       return;
     }
-    console.log({ selectedDoctor, selectedDate, selectedTime, reason });
-    toast({
-      title: "Appointment Booked!",
-      description: `Your appointment with ${mockDoctors.find(d=>d.id === selectedDoctor)?.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime} is pending confirmation.`,
+
+    const doctorDetails = mockDoctorsList.find(doc => doc.id === selectedDoctorId);
+    if (!doctorDetails) {
+      toast({
+        title: "Error",
+        description: "Selected doctor not found.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const patientName = user?.displayName || user?.email?.split('@')[0] || "Guest Patient";
+
+    addAppointmentEntry({
+      patientName,
+      doctorId: doctorDetails.id,
+      doctorName: doctorDetails.name,
+      specialty: doctorDetails.specialty,
+      date: selectedDate.toISOString().split('T')[0], // YYYY-MM-DD
+      time: selectedTime,
+      reason: reason || undefined,
     });
-    // Reset form or redirect
-    // setSelectedDoctor(undefined);
-    // setSelectedDate(new Date());
-    // setSelectedTime(undefined);
-    // setReason("");
+
+    toast({
+      title: "Appointment Request Sent!",
+      description: `Your appointment with ${doctorDetails.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime} is pending confirmation.`,
+    });
+    
+    resetForm();
   };
 
   return (
@@ -68,13 +94,13 @@ export default function BookAppointmentPage() {
         <CardContent className="space-y-6">
           <div>
             <Label htmlFor="doctor" className="flex items-center mb-1"><UserPlus className="mr-2 h-4 w-4 text-muted-foreground"/> Select Doctor</Label>
-            <Select value={selectedDoctor} onValueChange={setSelectedDoctor}>
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
               <SelectTrigger id="doctor">
                 <SelectValue placeholder="Choose a doctor" />
               </SelectTrigger>
               <SelectContent>
-                {mockDoctors.map(doc => (
-                  <SelectItem key={doc.id} value={doc.id}>{doc.name}</SelectItem>
+                {mockDoctorsList.map((doc: DoctorInfo) => (
+                  <SelectItem key={doc.id} value={doc.id}>{doc.name} ({doc.specialty})</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -120,7 +146,7 @@ export default function BookAppointmentPage() {
             />
           </div>
 
-          <Button onClick={handleBooking} className="w-full text-lg py-6" disabled={!selectedDoctor || !selectedDate || !selectedTime}>
+          <Button onClick={handleBooking} className="w-full text-lg py-6" disabled={!selectedDoctorId || !selectedDate || !selectedTime}>
             <CalendarCheck className="mr-2 h-5 w-5" /> Book Appointment
           </Button>
         </CardContent>
