@@ -1,7 +1,8 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MoreHorizontal, UserPlus, Search, Filter, Trash2, Edit3, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { UserRole } from '@/contexts/auth-context';
+import { Card } from '@/components/ui/card';
 
 interface User {
   id: string;
@@ -35,16 +37,22 @@ export default function ManageUsersPage() {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
-  // Add User Form State (Simplified)
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<UserRole>("patient");
 
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get('action') === 'add' || searchParams.get('add') === 'true') {
+      setIsAddUserDialogOpen(true);
+    }
+  }, [searchParams]);
+
 
   const handleAddUser = () => {
-    // Mock add user logic
     const newUser: User = {
       id: String(users.length + 1),
-      name: `New User ${users.length + 1}`,
+      name: `New User ${users.length + 1}`, // Placeholder name
       email: newUserEmail,
       role: newUserRole,
       createdAt: new Date().toISOString().split('T')[0],
@@ -54,7 +62,6 @@ export default function ManageUsersPage() {
     setNewUserEmail("");
     setNewUserRole("patient");
     setIsAddUserDialogOpen(false);
-    // In a real app, call API to create user and assign role
   };
 
   const filteredUsers = users.filter(user => 

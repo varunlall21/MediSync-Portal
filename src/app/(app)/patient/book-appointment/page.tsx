@@ -1,7 +1,8 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,13 +11,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { UserPlus, CalendarCheck, Clock, FileText } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import type { DateRange } from "react-day-picker"
-
 
 const mockDoctors = [
   { id: "d1", name: "Dr. Emily Carter (Cardiology)" },
   { id: "d2", name: "Dr. Johnathan Lee (Pediatrics)" },
   { id: "d3", name: "Dr. Sarah Miller (Dermatology)" },
+  { id: "d4", name: "Dr. David Wilson (Neurology)" }, // Added to match doctors page
 ];
 
 const availableTimeSlots = ["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM"];
@@ -27,6 +27,14 @@ export default function BookAppointmentPage() {
   const [selectedTime, setSelectedTime] = useState<string | undefined>();
   const [reason, setReason] = useState("");
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const doctorIdFromQuery = searchParams.get('doctorId');
+    if (doctorIdFromQuery && mockDoctors.find(doc => doc.id === doctorIdFromQuery)) {
+      setSelectedDoctor(doctorIdFromQuery);
+    }
+  }, [searchParams]);
 
   const handleBooking = () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) {
@@ -37,13 +45,16 @@ export default function BookAppointmentPage() {
       });
       return;
     }
-    // Mock booking logic
     console.log({ selectedDoctor, selectedDate, selectedTime, reason });
     toast({
       title: "Appointment Booked!",
       description: `Your appointment with ${mockDoctors.find(d=>d.id === selectedDoctor)?.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime} is pending confirmation.`,
     });
     // Reset form or redirect
+    // setSelectedDoctor(undefined);
+    // setSelectedDate(new Date());
+    // setSelectedTime(undefined);
+    // setReason("");
   };
 
   return (

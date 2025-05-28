@@ -59,8 +59,8 @@ export default function PatientDashboardPage() {
               }`}>
                 Status: {nextAppointment.status}
               </p>
-              <Button variant="outline" size="sm" className="mt-3 text-foreground border-foreground/50 hover:bg-accent/30">
-                Manage Appointment
+              <Button variant="outline" size="sm" className="mt-3 text-foreground border-foreground/50 hover:bg-accent/30" asChild>
+                <Link href="/patient/appointments">Manage Appointment</Link>
               </Button>
             </div>
           </CardContent>
