@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { KeyRound, Mail, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,7 +30,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
-  const { login, signInWithGoogle } = useAuth();
+  const { login, signInWithGoogle, user, loading: authLoading } = useAuth(); // Add user and authLoading
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -44,17 +44,24 @@ export default function LoginPage() {
     },
   });
 
+  // Redirect if user is already logged in (and not guest)
+  useEffect(() => {
+    if (!authLoading && user && user.id !== 'guest-preview-user') {
+      router.push('/');
+    }
+  }, [user, authLoading, router]);
+
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
-    const user = await login(values.email, values.password);
+    const loggedInUser = await login(values.email, values.password);
     setIsLoading(false);
-    if (user) {
+    if (loggedInUser) {
       toast({ title: "Login Successful", description: "Welcome back!" });
       router.push('/'); 
     } else {
       toast({
         title: "Login Failed",
-        description: "Invalid email or password. Please try again.",
+        description: "Invalid email or password, or email not confirmed. Please try again.",
         variant: "destructive",
       });
     }
@@ -62,19 +69,36 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    const user = await signInWithGoogle();
-    setIsGoogleLoading(false);
-    if (user) {
-      toast({ title: "Google Sign-In Successful", description: `Welcome, ${user.displayName || user.email}!` });
-      router.push('/');
-    } else {
+    try {
+      await signInWithGoogle();
+      // Supabase redirects, so user/toast handling is done by onAuthStateChange and useEffect
+      // No direct user object is returned here. If successful, redirection happens.
+      // If error occurs before redirect, it will be caught below.
+    } catch (error: any) {
       toast({
         title: "Google Sign-In Failed",
-        description: "Could not sign in with Google. Please try again.",
+        description: error.message || "Could not sign in with Google. Please try again.",
         variant: "destructive",
       });
+      setIsGoogleLoading(false);
     }
+    // setIsGoogleLoading(false) might not be reached if redirect is successful.
+    // The loader will persist until the page navigates away.
   };
+  
+  if (authLoading && !user) { // Show loading spinner if auth is loading and no user yet (prevents flash of login form)
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // If user is a guest, still show login form
+  if (user && user.id !== 'guest-preview-user' && !authLoading) {
+    // This case should be handled by the redirect useEffect, but as a fallback
+    return null; 
+  }
 
   return (
     <Card className="w-full max-w-md shadow-xl hover:shadow-2xl transition-shadow duration-300">
@@ -117,7 +141,7 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full transition-all duration-300 hover:shadow-md active:scale-95" disabled={isLoading}>
+            <Button type="submit" className="w-full transition-all duration-300 hover:shadow-md active:scale-95" disabled={isLoading || isGoogleLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Login
             </Button>

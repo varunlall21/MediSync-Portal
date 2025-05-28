@@ -25,8 +25,20 @@ export function UserNav() {
 
   const getInitials = (email: string | null | undefined) => {
     if (!email) return "U";
+    const nameFromMetadata = user.user_metadata?.full_name || user.user_metadata?.name;
+    if (nameFromMetadata && typeof nameFromMetadata === 'string' && nameFromMetadata.length > 0) {
+      const parts = nameFromMetadata.split(' ');
+      if (parts.length > 1) {
+        return (parts[0][0] + parts[parts.length -1][0]).toUpperCase();
+      }
+      return nameFromMetadata.substring(0, 2).toUpperCase();
+    }
     return email.substring(0, 2).toUpperCase();
   };
+  
+  const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0] || "User";
+  const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || "";
+
 
   const getRoleIcon = () => {
     switch(role) {
@@ -42,7 +54,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border-2 border-primary hover:border-accent transition-colors">
-            <AvatarImage src={user.photoURL || `https://placehold.co/100x100.png?text=${getInitials(user.email)}`} alt={user.email || "User"} data-ai-hint="avatar person" />
+            <AvatarImage src={avatarUrl || `https://placehold.co/100x100.png?text=${getInitials(user.email)}`} alt={String(displayName)} data-ai-hint="avatar person" />
             <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
           </Avatar>
         </Button>
@@ -50,7 +62,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user.displayName || user.email?.split('@')[0]}</p>
+            <p className="text-sm font-medium leading-none">{String(displayName)}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
             </p>
