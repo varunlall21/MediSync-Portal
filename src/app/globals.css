@@ -15,22 +15,25 @@ body {
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 3.9%;
-    --primary: 210 52% 53%; /* #4681C7 */
-    --primary-foreground: 0 0% 98%; /* White on primary */
+    
+    /* Soft Teal Accent - Light Theme */
+    --primary: 174 60% 35%; /* Darker Teal for light bg (e.g., #228F83) */
+    --primary-foreground: 0 0% 98%; /* Almost White */
+    --accent: 174 55% 45%; /* Complementary Teal (e.g., #3EABA0) */
+    --accent-foreground: 0 0% 98%; /* Almost White */
+    --ring: 174 60% 35%; /* Darker Teal for rings */
+
     --secondary: 0 0% 96.1%; /* Light gray */
     --secondary-foreground: 0 0% 9%; /* Dark gray on secondary */
     --muted: 0 0% 96.1%; /* Light gray for muted backgrounds */
     --muted-foreground: 0 0% 45.1%; /* Mid gray for muted text */
-    --accent: 199 29% 56%; /* #699CB3 */
-    --accent-foreground: 0 0% 9%; /* Dark gray on accent for light mode */
     --destructive: 0 84.2% 60.2%; /* Standard red */
     --destructive-foreground: 0 0% 98%; /* White on destructive */
     --border: 0 0% 89.8%; /* Light gray border */
     --input: 0 0% 89.8%;
-    --ring: 210 52% 53%; /* Primary color for rings */
 
-    --chart-1: 210 52% 43%; /* Darker primary for light bg */
-    --chart-2: 199 29% 46%; /* Darker accent for light bg */
+    --chart-1: 174 60% 30%; /* Darker teal for charts on light bg */
+    --chart-2: 174 50% 40%; 
     --chart-3: 0 0% 30%;
     --chart-4: 0 0% 50%;
     --chart-5: 0 0% 70%;
@@ -38,37 +41,40 @@ body {
     /* Light theme specific sidebar variables */
     --sidebar-background: 0 0% 98%; /* Very light gray */
     --sidebar-foreground: 0 0% 20%; /* Darker gray text */
-    --sidebar-primary: 210 52% 53%;
+    --sidebar-primary: 174 60% 35%; /* Teal */
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 199 29% 56%; /* Muted Teal */
-    --sidebar-accent-foreground: 0 0% 9%; /* Dark text on accent for light mode */
+    --sidebar-accent: 174 55% 45%; /* Teal */
+    --sidebar-accent-foreground: 0 0% 98%; 
     --sidebar-border: 0 0% 90%; /* Light border */
-    --sidebar-ring: 210 52% 53%;
+    --sidebar-ring: 174 60% 35%;
   }
 
   .dark { /* DARK THEME */
     --background: 0 0% 7%; /* #121212 */
     --foreground: 0 0% 98%; /* Almost white */
-    --card: 0 0% 10%;
+    --card: 0 0% 10%; /* Darker card bg */
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 98%;
-    --primary: 210 52% 53%; /* #4681C7 */
-    --primary-foreground: 0 0% 98%;
+
+    /* Soft Teal Accent - Dark Theme */
+    --primary: 174 60% 40%; /* Soft Teal #26A69A */
+    --primary-foreground: 0 0% 98%; /* Almost White */
+    --accent: 174 55% 50%; /* Lighter/Softer Teal #4DB6AC */
+    --accent-foreground: 0 0% 98%; /* Almost White */
+    --ring: 174 60% 40%; /* Soft Teal for rings */
+
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 199 29% 56%; /* #699CB3 */
-    --accent-foreground: 0 0% 98%; /* Almost white on accent for dark mode */
-    --destructive: 0 62.8% 30.6%; /* Darker red for dark mode */
+    --destructive: 0 70% 50%; /* Adjusted red for dark mode */
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 210 52% 53%;
+    --border: 0 0% 20%; /* Slightly lighter border for dark mode */
+    --input: 0 0% 20%;
     
-    --chart-1: 210 52% 53%;
-    --chart-2: 199 29% 56%;
+    --chart-1: 174 60% 40%; /* Teal */
+    --chart-2: 174 55% 50%; /* Lighter Teal */
     --chart-3: 0 0% 80%;
     --chart-4: 0 0% 60%;
     --chart-5: 0 0% 40%;
@@ -76,12 +82,12 @@ body {
     /* Dark theme specific sidebar variables */
     --sidebar-background: 0 0% 9%;
     --sidebar-foreground: 0 0% 80%;
-    --sidebar-primary: 210 52% 53%;
+    --sidebar-primary: 174 60% 40%; /* Teal */
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 199 29% 56%;
+    --sidebar-accent: 174 55% 50%; /* Lighter Teal */
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 210 52% 53%;
+    --sidebar-ring: 174 60% 40%;
   }
 }
 
