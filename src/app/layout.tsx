@@ -6,19 +6,12 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from "@/components/ui/toaster";
-import { useEffect } from 'react'; // Added useEffect
+import { useEffect } from 'react'; 
 
 const inter = Inter({
   variable: '--font-sans',
   subsets: ['latin'],
 });
-
-// Metadata object removed as it cannot be exported from a client component.
-// For full SEO, specific pages might need to export metadata.
-// export const metadata: Metadata = {
-//   title: 'MediSync Portal',
-//   description: 'A modern healthcare management portal.',
-// };
 
 export default function RootLayout({
   children,
@@ -41,8 +34,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning> 
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          {children}
-          <Toaster />
+          <> {/* Wrap children of AuthProvider in a Fragment */}
+            {children}
+            <Toaster />
+          </>
         </AuthProvider>
       </body>
     </html>
