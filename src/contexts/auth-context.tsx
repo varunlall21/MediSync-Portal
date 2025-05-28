@@ -28,7 +28,7 @@ const getMockRole = (email?: string | null): UserRole => {
   if (!email) return null;
   if (email.includes('admin')) return 'admin';
   if (email.includes('doctor')) return 'doctor';
-  return 'patient'; 
+  return 'patient';
 };
 
 // Helper to create a mock Supabase user for guest mode
@@ -38,12 +38,12 @@ const createMockGuestUser = (): SupabaseUser => {
     id: 'guest-preview-user',
     email: guestEmail,
     app_metadata: { provider: 'email', providers: ['email'] },
-    user_metadata: { 
-      email: guestEmail, 
+    user_metadata: {
+      email: guestEmail,
       name: 'Guest Preview',
       // Ensure common fields used by UserNav are present, even if empty
-      full_name: 'Guest Preview', 
-      avatar_url: '', 
+      full_name: 'Guest Preview',
+      avatar_url: '',
       picture: '',
     },
     aud: 'authenticated',
@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(guestUser);
           setRole(getMockRole(guestUser.email));
         }
-        setLoading(false); 
+        setLoading(false);
       }
     );
 
@@ -127,35 +127,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const signup = async (email: string, pass: string) => {
     setLoading(true);
     try {
-      // Note: Supabase signUp might send a confirmation email. User won't be immediately 'logged in'
-      // unless email confirmation is disabled or auto-confirmed in Supabase settings.
-      const { data, error } = await supabase.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password: pass,
         options: {
-          // You can add user_metadata here if needed during signup
-          // data: { full_name: 'New User' } 
+          // data: { full_name: 'New User' }
         }
       });
       if (error) throw error;
-      // After successful signup, Supabase typically requires email confirmation.
-      // The onAuthStateChange listener will eventually pick up the user session
-      // once confirmed, or if auto-confirmation is enabled.
-      // For guest mode, we might want to set user & role if no confirmation needed for preview.
-      // However, the current guest logic already handles the "no user" case.
-      // If user is returned and session exists (e.g. email confirmation disabled in Supabase settings)
       if (data.user) {
-        // For demo, if user is returned directly (e.g. auto-confirm on), set them
          if (data.session) {
             setUser(data.user);
             setRole(getMockRole(data.user.email));
             return data.user;
          }
-         // If no session, user needs to confirm email. They are technically "signed up".
-         return data.user; // Return user object even if not fully authenticated yet
+         return data.user;
       }
       return null;
-    } catch (error)_ {
+    } catch (error) {
       console.error("Supabase signup error:", error);
       return null;
     } finally {
@@ -167,29 +156,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       await supabase.auth.signOut();
-      // onAuthStateChange will handle setting user to null and activating guest mode.
     } catch (error) {
       console.error("Supabase logout error:", error);
-    } finally {
-      // setLoading(false); // onAuthStateChange will set loading
     }
   };
 
   const signInWithGoogle = async () => {
-    // setLoading(true); // Loading state handled by redirect and onAuthStateChange
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin + '/auth/callback', // Ensure this matches Supabase settings
+          redirectTo: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : undefined,
         },
       });
       if (error) throw error;
-      // Page will redirect. User session handled by onAuthStateChange upon return.
     } catch (error: any) {
       console.error("Supabase Google sign-in error:", error.message);
-      // setLoading(false);
-      // Potentially show a toast here
     }
   };
 
@@ -203,12 +185,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const sendPasswordReset = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/update-password', // Example redirect for password update form
+        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/update-password' : undefined,
       });
       if (error) throw error;
     } catch (error: any) {
       console.error("Supabase password reset error:", error);
-      throw error; 
+      throw error;
     }
   };
 
