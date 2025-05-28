@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,10 +62,10 @@ export default {
   				ring: 'hsl(var(--sidebar-ring))'
   			}
   		},
-  		borderRadius: {
-  			lg: 'var(--radius)',
-  			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  		borderRadius: { // Updated to reflect new --radius
+  			lg: 'var(--radius)', // e.g., 0.8rem
+  			md: 'calc(var(--radius) - 0.15rem)', // e.g., 0.65rem
+  			sm: 'calc(var(--radius) - 0.3rem)'  // e.g., 0.5rem
   		},
   		keyframes: {
   			'accordion-down': {

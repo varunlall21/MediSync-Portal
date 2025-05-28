@@ -16,7 +16,7 @@ export default function AdminDashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Admin Dashboard</h1>
-        <Button asChild>
+        <Button asChild className="transition-all duration-300 hover:shadow-lg active:scale-95">
           <Link href="/admin/users?action=add"> 
             <Users className="mr-2 h-4 w-4" /> Add New User
           </Link>
@@ -25,7 +25,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
+          <Card key={stat.title} className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -45,7 +45,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
+        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center"><Activity className="mr-2 h-5 w-5 text-primary" /> Recent Activity</CardTitle>
             <CardDescription>Overview of recent portal activities.</CardDescription>
@@ -66,15 +66,15 @@ export default function AdminDashboardPage() {
             </ul>
           </CardContent>
         </Card>
-        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
+        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center"><BarChart3 className="mr-2 h-5 w-5 text-primary" /> Quick Reports</CardTitle>
             <CardDescription>Access common system reports.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start hover:border-primary transition-colors">User Activity Report</Button>
-            <Button variant="outline" className="w-full justify-start hover:border-primary transition-colors">Appointment Statistics</Button>
-            <Button variant="outline" className="w-full justify-start hover:border-primary transition-colors">Doctor Performance</Button>
+            <Button variant="outline" className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95">User Activity Report</Button>
+            <Button variant="outline" className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95">Appointment Statistics</Button>
+            <Button variant="outline" className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95">Doctor Performance</Button>
           </CardContent>
         </Card>
       </div>

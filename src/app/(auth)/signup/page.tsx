@@ -54,7 +54,7 @@ export default function SignupPage() {
     setIsLoading(false);
     if (user) {
       toast({ title: "Signup Successful", description: "Welcome to MediSync! You can now log in." });
-      router.push("/login"); // Redirect to login after successful signup
+      router.push("/login"); 
     } else {
       toast({
         title: "Signup Failed",
@@ -65,7 +65,7 @@ export default function SignupPage() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-md shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <CardHeader className="space-y-1 text-center">
         <UserPlus className="mx-auto h-10 w-10 text-primary" />
         <CardTitle className="text-2xl">Create an Account</CardTitle>
@@ -122,7 +122,7 @@ export default function SignupPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full transition-all duration-300 hover:shadow-md active:scale-95" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Sign Up
             </Button>

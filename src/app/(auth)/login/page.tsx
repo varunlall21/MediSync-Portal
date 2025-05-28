@@ -50,7 +50,6 @@ export default function LoginPage() {
     setIsLoading(false);
     if (user) {
       toast({ title: "Login Successful", description: "Welcome back!" });
-      // Redirection will be handled by the root page.tsx or (app)/layout.tsx
       router.push('/'); 
     } else {
       toast({
@@ -78,7 +77,7 @@ export default function LoginPage() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-md shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl">Welcome Back</CardTitle>
         <CardDescription>Enter your credentials to access MediSync Portal</CardDescription>
@@ -118,7 +117,7 @@ export default function LoginPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full transition-all duration-300 hover:shadow-md active:scale-95" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Login
             </Button>
@@ -134,11 +133,10 @@ export default function LoginPage() {
             </span>
           </div>
         </div>
-        <Button variant="outline" className="w-full" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
+        <Button variant="outline" className="w-full transition-all duration-300 hover:shadow-md active:scale-95" onClick={handleGoogleSignIn} disabled={isGoogleLoading || isLoading}>
           {isGoogleLoading ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
-            // Placeholder for Google Icon
             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />

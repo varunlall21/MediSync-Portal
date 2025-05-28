@@ -60,7 +60,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <Card className="w-full max-w-md shadow-xl">
+    <Card className="w-full max-w-md shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <CardHeader className="space-y-1 text-center">
         <Undo2 className="mx-auto h-10 w-10 text-primary" />
         <CardTitle className="text-2xl">Forgot Password?</CardTitle>
@@ -85,7 +85,7 @@ export default function ForgotPasswordPage() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button type="submit" className="w-full transition-all duration-300 hover:shadow-md active:scale-95" disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Send Reset Link
             </Button>

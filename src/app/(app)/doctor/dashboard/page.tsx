@@ -23,7 +23,7 @@ export default function DoctorDashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
+          <Card key={stat.title} className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -37,7 +37,7 @@ export default function DoctorDashboardPage() {
         ))}
       </div>
       
-      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
+      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> Upcoming Appointments</CardTitle>
           <CardDescription>Your schedule for the upcoming hours.</CardDescription>
@@ -46,16 +46,16 @@ export default function DoctorDashboardPage() {
           {upcomingAppointments.length > 0 ? (
             <ul className="space-y-4">
               {upcomingAppointments.map((appt, index) => (
-                <li key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-lg border bg-card hover:bg-muted/30 dark:hover:bg-muted/10 transition-colors">
+                <li key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-lg border bg-card hover:bg-muted/30 dark:hover:bg-muted/10 transition-colors hover:shadow-md">
                   <div>
                     <p className="font-semibold text-foreground">{appt.time} - {appt.patient}</p>
                     <p className="text-sm text-muted-foreground">{appt.reason}</p>
                   </div>
                   <div className="mt-2 sm:mt-0 flex gap-2">
-                    <Button size="sm" variant="outline" asChild>
+                    <Button size="sm" variant="outline" className="transition-all duration-300 hover:shadow-sm active:scale-95" asChild>
                       <Link href={`/doctor/patients/${appt.patient.toLowerCase().replace(' ','-')}/medical-history`}>View History</Link>
                     </Button>
-                    <Button size="sm">Start Consult</Button>
+                    <Button size="sm" className="transition-all duration-300 hover:shadow-sm active:scale-95">Start Consult</Button>
                   </div>
                 </li>
               ))}
@@ -64,29 +64,29 @@ export default function DoctorDashboardPage() {
             <p className="text-muted-foreground">No upcoming appointments scheduled.</p>
           )}
           <div className="mt-6 flex justify-end">
-             <Button asChild>
+             <Button asChild className="transition-all duration-300 hover:shadow-lg active:scale-95">
                 <Link href="/doctor/schedule">View Full Schedule</Link>
              </Button>
           </div>
         </CardContent>
       </Card>
 
-      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
+      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><Activity className="mr-2 h-5 w-5 text-primary" /> Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-colors" asChild>
+          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
              <Link href="/doctor/patients">
                 <Users className="mr-2 h-5 w-5"/> Manage My Patients
              </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-colors" asChild>
+          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
             <Link href="/doctor/appointments">
                 <CheckCircle className="mr-2 h-5 w-5 text-green-500 dark:text-green-400"/> Approve Appointments
             </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-colors" asChild>
+          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
              <Link href="/doctor/appointments">
                 <XCircle className="mr-2 h-5 w-5 text-red-500 dark:text-red-400"/> Cancel Appointments
             </Link>
