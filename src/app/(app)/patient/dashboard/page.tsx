@@ -32,7 +32,7 @@ export default function PatientDashboardPage() {
       </div>
 
       {nextAppointment && (
-        <Card className="shadow-lg bg-gradient-to-r from-primary/30 to-accent/30 border-primary/50">
+        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300 bg-gradient-to-r from-primary/30 to-accent/30 dark:from-primary/20 dark:to-accent/20 border-primary/50 dark:border-primary/30">
           <CardHeader>
             <CardTitle className="flex items-center text-foreground">
               <CalendarDays className="mr-3 h-6 w-6 text-primary" />
@@ -45,7 +45,7 @@ export default function PatientDashboardPage() {
                 alt={nextAppointment.doctor} 
                 width={80} 
                 height={80} 
-                className="rounded-full border-2 border-accent"
+                className="rounded-full border-2 border-accent dark:border-accent/70"
                 data-ai-hint="doctor portrait" 
             />
             <div className="flex-1">
@@ -55,11 +55,11 @@ export default function PatientDashboardPage() {
             </div>
             <div className="sm:text-right">
               <p className={`text-sm font-medium px-3 py-1 rounded-full ${
-                nextAppointment.status === 'Approved' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+                nextAppointment.status === 'Approved' ? 'bg-green-500/20 text-green-600 dark:text-green-400' : 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
               }`}>
                 Status: {nextAppointment.status}
               </p>
-              <Button variant="outline" size="sm" className="mt-3 text-foreground border-foreground/50 hover:bg-accent/30" asChild>
+              <Button variant="outline" size="sm" className="mt-3 text-foreground border-foreground/50 hover:bg-accent/30 dark:hover:bg-accent/20 dark:border-foreground/30" asChild>
                 <Link href="/patient/appointments">Manage Appointment</Link>
               </Button>
             </div>
@@ -67,7 +67,7 @@ export default function PatientDashboardPage() {
         </Card>
       )}
 
-      <Card className="shadow-lg">
+      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><BarChartHorizontalBig className="mr-2 h-5 w-5 text-primary" /> Quick Actions</CardTitle>
           <CardDescription>Easily access common portal features.</CardDescription>
@@ -83,19 +83,19 @@ export default function PatientDashboardPage() {
         </CardContent>
       </Card>
       
-      <Card className="shadow-lg">
+      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><Stethoscope className="mr-2 h-5 w-5 text-primary"/> Health Resources</CardTitle>
           <CardDescription>Find useful health information and tips.</CardDescription>
         </CardHeader>
         <CardContent>
            <div className="grid md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+            <div className="p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors">
                 <h3 className="font-semibold text-foreground">Understanding Your Lab Results</h3>
                 <p className="text-sm text-muted-foreground mt-1">Learn how to interpret common lab test results.</p>
                 <Link href="#" className="text-sm text-primary hover:underline mt-2 inline-block">Read more &rarr;</Link>
             </div>
-             <div className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+             <div className="p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors">
                 <h3 className="font-semibold text-foreground">Tips for a Healthy Heart</h3>
                 <p className="text-sm text-muted-foreground mt-1">Discover lifestyle changes for better cardiovascular health.</p>
                 <Link href="#" className="text-sm text-primary hover:underline mt-2 inline-block">Read more &rarr;</Link>

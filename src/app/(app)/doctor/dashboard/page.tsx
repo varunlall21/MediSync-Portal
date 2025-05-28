@@ -12,9 +12,9 @@ export default function DoctorDashboardPage() {
   ];
 
   const stats = [
-    { title: "Today's Appointments", value: "12", icon: CalendarDays, color: "text-blue-500" },
-    { title: "Pending Requests", value: "3", icon: Clock, color: "text-yellow-500" },
-    { title: "Total Patients", value: "157", icon: Users, color: "text-green-500" },
+    { title: "Today's Appointments", value: "12", icon: CalendarDays, color: "text-primary" },
+    { title: "Pending Requests", value: "3", icon: Clock, color: "text-yellow-500 dark:text-yellow-400" },
+    { title: "Total Patients", value: "157", icon: Users, color: "text-green-500 dark:text-green-400" },
   ];
 
   return (
@@ -23,7 +23,7 @@ export default function DoctorDashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <Card key={stat.title} className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -37,7 +37,7 @@ export default function DoctorDashboardPage() {
         ))}
       </div>
       
-      <Card className="shadow-lg">
+      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> Upcoming Appointments</CardTitle>
           <CardDescription>Your schedule for the upcoming hours.</CardDescription>
@@ -46,7 +46,7 @@ export default function DoctorDashboardPage() {
           {upcomingAppointments.length > 0 ? (
             <ul className="space-y-4">
               {upcomingAppointments.map((appt, index) => (
-                <li key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
+                <li key={index} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-lg border bg-card hover:bg-muted/30 dark:hover:bg-muted/10 transition-colors">
                   <div>
                     <p className="font-semibold text-foreground">{appt.time} - {appt.patient}</p>
                     <p className="text-sm text-muted-foreground">{appt.reason}</p>
@@ -71,24 +71,24 @@ export default function DoctorDashboardPage() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-lg">
+      <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><Activity className="mr-2 h-5 w-5 text-primary" /> Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button variant="outline" className="w-full justify-start text-base py-6" asChild>
+          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-colors" asChild>
              <Link href="/doctor/patients">
                 <Users className="mr-2 h-5 w-5"/> Manage My Patients
              </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start text-base py-6" asChild>
+          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-colors" asChild>
             <Link href="/doctor/appointments">
-                <CheckCircle className="mr-2 h-5 w-5 text-green-500"/> Approve Appointments
+                <CheckCircle className="mr-2 h-5 w-5 text-green-500 dark:text-green-400"/> Approve Appointments
             </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start text-base py-6" asChild>
+          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-colors" asChild>
              <Link href="/doctor/appointments">
-                <XCircle className="mr-2 h-5 w-5 text-red-500"/> Cancel Appointments
+                <XCircle className="mr-2 h-5 w-5 text-red-500 dark:text-red-400"/> Cancel Appointments
             </Link>
           </Button>
         </CardContent>

@@ -6,10 +6,10 @@ import Link from "next/link";
 
 export default function AdminDashboardPage() {
   const stats = [
-    { title: "Total Users", value: "1,250", icon: Users, color: "text-sky-500", link: "/admin/users" },
-    { title: "Active Doctors", value: "75", icon: Stethoscope, color: "text-green-500", link: "/admin/doctors" },
-    { title: "Pending Appointments", value: "32", icon: CalendarDays, color: "text-yellow-500", link: "/admin/appointments" },
-    { title: "System Health", value: "Optimal", icon: ShieldCheck, color: "text-teal-500", link: "#" },
+    { title: "Total Users", value: "1,250", icon: Users, color: "text-sky-500 dark:text-sky-400", link: "/admin/users" },
+    { title: "Active Doctors", value: "75", icon: Stethoscope, color: "text-green-500 dark:text-green-400", link: "/admin/doctors" },
+    { title: "Pending Appointments", value: "32", icon: CalendarDays, color: "text-yellow-500 dark:text-yellow-400", link: "/admin/appointments" },
+    { title: "System Health", value: "Optimal", icon: ShieldCheck, color: "text-teal-500 dark:text-teal-400", link: "#" },
   ];
 
   return (
@@ -17,7 +17,6 @@ export default function AdminDashboardPage() {
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Admin Dashboard</h1>
         <Button asChild>
-          {/* Link updated to use a query param to trigger dialog on users page */}
           <Link href="/admin/users?action=add"> 
             <Users className="mr-2 h-4 w-4" /> Add New User
           </Link>
@@ -26,7 +25,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="shadow-lg hover:shadow-xl transition-shadow duration-300">
+          <Card key={stat.title} className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
@@ -46,7 +45,7 @@ export default function AdminDashboardPage() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card className="shadow-lg">
+        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="flex items-center"><Activity className="mr-2 h-5 w-5 text-primary" /> Recent Activity</CardTitle>
             <CardDescription>Overview of recent portal activities.</CardDescription>
@@ -59,7 +58,7 @@ export default function AdminDashboardPage() {
                 "Appointment for 'John Wick' approved.",
                 "Admin role assigned to 'admin@example.com'."
               ].map((activity, i) => (
-                <li key={i} className="flex items-center">
+                <li key={i} className="flex items-center p-2 rounded-md hover:bg-muted/50 transition-colors">
                   <span className="mr-2 h-2 w-2 rounded-full bg-accent"></span>
                   {activity}
                 </li>
@@ -67,15 +66,15 @@ export default function AdminDashboardPage() {
             </ul>
           </CardContent>
         </Card>
-        <Card className="shadow-lg">
+        <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="flex items-center"><BarChart3 className="mr-2 h-5 w-5 text-primary" /> Quick Reports</CardTitle>
             <CardDescription>Access common system reports.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start">User Activity Report</Button>
-            <Button variant="outline" className="w-full justify-start">Appointment Statistics</Button>
-            <Button variant="outline" className="w-full justify-start">Doctor Performance</Button>
+            <Button variant="outline" className="w-full justify-start hover:border-primary transition-colors">User Activity Report</Button>
+            <Button variant="outline" className="w-full justify-start hover:border-primary transition-colors">Appointment Statistics</Button>
+            <Button variant="outline" className="w-full justify-start hover:border-primary transition-colors">Doctor Performance</Button>
           </CardContent>
         </Card>
       </div>

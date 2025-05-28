@@ -2,6 +2,7 @@
 import { Logo } from '@/components/logo';
 import { UserNav } from '@/components/layout/user-nav';
 import { SidebarTrigger } from "@/components/ui/sidebar";
+import { ThemeToggleButton } from "@/components/ui/theme-toggle-button"; // Added import
 
 export default function Header() {
   return (
@@ -11,7 +12,10 @@ export default function Header() {
           <SidebarTrigger className="lg:hidden" /> {/* Only show on smaller screens */}
           <Logo />
         </div>
-        <UserNav />
+        <div className="flex items-center gap-2"> {/* Added gap for multiple items */}
+          <ThemeToggleButton /> {/* Added theme toggle button */}
+          <UserNav />
+        </div>
       </div>
     </header>
   );
