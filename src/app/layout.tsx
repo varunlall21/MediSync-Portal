@@ -1,7 +1,7 @@
 
 "use client"; // Required for useEffect
 
-import React, { useEffect } from 'react'; // Ensure React is imported
+import React, { useEffect, useState } from 'react'; // Ensure React, useState, useEffect are imported
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
@@ -17,7 +17,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const [isClient, setIsClient] = useState(false);
+
   useEffect(() => {
+    // This effect runs only on the client, after initial mount
+    setIsClient(true);
+
     const theme = localStorage.getItem("theme");
     const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
 
@@ -26,15 +31,15 @@ export default function RootLayout({
     } else {
       document.documentElement.classList.remove("dark");
     }
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          <div> {/* Removed key="medisync-app-root-wrapper" */}
+          <div> {/* Wrapper div for AuthProvider children */}
             {children}
-            <Toaster />
+            {isClient && <Toaster />} {/* Only render Toaster on the client after mount */}
           </div>
         </AuthProvider>
       </body>
