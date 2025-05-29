@@ -58,13 +58,15 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error(
-        `Error fetching doctors from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
-      );
+      let errorMessage = `Error fetching doctors from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
+      if (status === 401) {
+        errorMessage += "\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect or your server hasn't been restarted after changing it. Please verify the key in your Supabase project API settings and ensure it's correctly set in .env.local.";
+      }
+      console.error(errorMessage);
       throw error; // Re-throw the error to be caught by the calling component
     }
     return data || [];
-  } catch (caughtError: any) { 
+  } catch (caughtError: any) {
     // This block catches errors from the supabase call itself (network, etc.) OR the re-thrown error from above.
     console.error(
         `Exception in getDoctors service function: ${JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2)}`
@@ -76,7 +78,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
 
 export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorInfo | null> => {
     try {
-        const { data, error } = await supabase
+        const { data, error, status } = await supabase
             .from(DOCTORS_TABLE)
             .insert([
                 { ...doctorData }
@@ -85,7 +87,11 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
             .single();
 
         if (error) {
-            console.error('Error adding doctor:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+            let errorMessage = `Error adding doctor. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
+            if (status === 401) {
+              errorMessage += "\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect or your server hasn't been restarted after changing it. Please verify the key in your Supabase project API settings and ensure it's correctly set in .env.local.";
+            }
+            console.error(errorMessage);
             throw error;
         }
         return data;
@@ -106,9 +112,11 @@ export const getAppointments = async (): Promise<Appointment[]> => {
       .order('booked_at', { ascending: false });
 
     if (error) {
-      console.error(
-        `Error fetching appointments from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
-      );
+      let errorMessage = `Error fetching appointments from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
+      if (status === 401) {
+        errorMessage += "\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect or your server hasn't been restarted after changing it. Please verify the key in your Supabase project API settings and ensure it's correctly set in .env.local.";
+      }
+      console.error(errorMessage);
       throw error;
     }
     return data || [];
@@ -131,12 +139,14 @@ export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData
       .from(APPOINTMENTS_TABLE)
       .insert([appointmentToInsert])
       .select()
-      .single(); 
+      .single();
 
     if (error) {
-      console.error(
-        `Error adding appointment. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
-      );
+      let errorMessage = `Error adding appointment. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
+      if (status === 401) {
+        errorMessage += "\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect or your server hasn't been restarted after changing it. Please verify the key in your Supabase project API settings and ensure it's correctly set in .env.local.";
+      }
+      console.error(errorMessage);
       throw error;
     }
     return data;
@@ -158,9 +168,11 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
       .single();
 
     if (error) {
-      console.error(
-        `Error updating appointment status. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
-      );
+      let errorMessage = `Error updating appointment status. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
+      if (status === 401) {
+        errorMessage += "\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect or your server hasn't been restarted after changing it. Please verify the key in your Supabase project API settings and ensure it's correctly set in .env.local.";
+      }
+      console.error(errorMessage);
       throw error;
     }
     return data;
@@ -172,3 +184,4 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
   }
 };
 
+    
