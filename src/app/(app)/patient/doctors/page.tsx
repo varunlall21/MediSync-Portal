@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Stethoscope, Search, Filter, CalendarPlus, Loader2 } from "lucide-react";
+import { Stethoscope, Search, Filter, CalendarPlus, Loader2, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { getDoctors, type DoctorInfo } from '@/lib/appointment-service';
@@ -15,17 +15,26 @@ export default function PatientFindDoctorsPage() {
   const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     const loadDoctors = async () => {
       setIsLoading(true);
+      setFetchError(null);
       try {
         const fetchedDoctors = await getDoctors();
         setDoctors(fetchedDoctors);
-      } catch (error) {
-        console.error("Failed to fetch doctors:", error);
-        toast({ title: "Error", description: "Could not load doctor list.", variant: "destructive" });
+      } catch (error: any) {
+        console.error("PatientFindDoctorsPage - Failed to fetch doctors:", error.message);
+        const detailedError = error.message || "Could not load doctor list. Please check console for more details.";
+        setFetchError(detailedError);
+        toast({ 
+          title: "Error Loading Doctors", 
+          description: detailedError, 
+          variant: "destructive",
+          duration: 10000 // Keep error toast longer
+        });
       } finally {
         setIsLoading(false);
       }
@@ -40,9 +49,9 @@ export default function PatientFindDoctorsPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="ml-2">Loading doctors...</p>
+      <div className="flex h-64 flex-col items-center justify-center space-y-3">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-lg text-muted-foreground">Loading available doctors...</p>
       </div>
     );
   }
@@ -69,6 +78,44 @@ export default function PatientFindDoctorsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {fetchError && (
+        <Card className="border-destructive bg-destructive/10 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center text-destructive">
+              <AlertTriangle className="mr-2 h-5 w-5" /> Unable to Load Doctors
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-destructive/90">
+              There was an issue fetching the list of doctors. Please try again later.
+            </p>
+            <p className="mt-2 text-xs text-destructive/70">
+              Details: {fetchError}
+            </p>
+             <p className="mt-2 text-xs text-destructive/70">
+              This could be due to network issues, database configuration, or Row Level Security policies if data is expected. Check the browser console for more technical details from the "AppointmentService".
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {!fetchError && doctors.length === 0 && (
+         <div className="mt-8 p-10 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
+            <Stethoscope className="mx-auto h-12 w-12 mb-4 text-primary/50" />
+            <h3 className="text-xl font-semibold mb-2">No Doctors Available</h3>
+            <p>No doctors are currently listed in the system, or none match your current filters.</p>
+            <p className="text-sm mt-1">If you believe this is an error, please contact support or check RLS policies if data is expected.</p>
+        </div>
+       )}
+
+      {!fetchError && doctors.length > 0 && filteredDoctors.length === 0 && (
+         <div className="mt-8 p-10 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
+            <Search className="mx-auto h-12 w-12 mb-4 text-primary/50" />
+            <h3 className="text-xl font-semibold mb-2">No Doctors Found</h3>
+            <p>No doctors found matching your search criteria "{searchTerm}". Try a different search term.</p>
+        </div>
+       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredDoctors.map(doctor => (
@@ -100,16 +147,9 @@ export default function PatientFindDoctorsPage() {
           </Card>
         ))}
       </div>
-       {filteredDoctors.length === 0 && !isLoading && (
-         <div className="mt-4 p-8 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
-            No doctors found matching your criteria.
-        </div>
-       )}
-       {doctors.length === 0 && !isLoading && (
-         <div className="mt-4 p-8 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
-            No doctors are currently available.
-        </div>
-       )}
     </div>
   );
 }
+
+
+    
