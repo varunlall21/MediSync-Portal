@@ -104,7 +104,9 @@ export default function LoginPage() {
     <Card className="w-full max-w-md shadow-xl hover:shadow-2xl transition-shadow duration-300">
       <CardHeader className="space-y-1 text-center">
         <CardTitle className="text-2xl">Welcome Back</CardTitle>
-        <CardDescription>Enter your credentials to access MediSync Portal</CardDescription>
+        <CardDescription>
+          Enter your credentials to access MediSync Portal. Your role (Patient, Doctor, Admin) is determined by your email upon login.
+        </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-6">
         <Form {...form}>

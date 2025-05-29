@@ -79,7 +79,9 @@ export default function SignupPage() {
       <CardHeader className="space-y-1 text-center">
         <UserPlus className="mx-auto h-10 w-10 text-primary" />
         <CardTitle className="text-2xl">Create an Account</CardTitle>
-        <CardDescription>Join MediSync Portal to manage your healthcare.</CardDescription>
+        <CardDescription>
+          Join MediSync Portal. Your role (Patient, Doctor, Admin) will be determined by the email you use.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
