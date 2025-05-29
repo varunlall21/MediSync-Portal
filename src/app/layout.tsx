@@ -37,9 +37,9 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          <div> {/* Wrapper div for AuthProvider children */}
+          <div> {/* This div is the single child of AuthProvider */}
             {children}
-            {isClient && <Toaster />} {/* Only render Toaster on the client after mount */}
+            {isClient && <Toaster key="app-toaster" />} {/* Added key here */}
           </div>
         </AuthProvider>
       </body>
