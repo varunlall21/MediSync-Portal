@@ -1,16 +1,84 @@
 
+"use client";
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig, HeartPulse, Brain, FileSpreadsheet } from "lucide-react";
+import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig, HeartPulse, Brain, FileSpreadsheet, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from '@/contexts/auth-context';
+import { getAppointments, type Appointment } from '@/lib/appointment-service';
+import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 
 export default function PatientDashboardPage() {
-  const nextAppointment = {
-    doctor: "Dr. Emily Carter",
-    specialty: "Cardiology",
-    time: "Tomorrow, 10:30 AM",
-    status: "Approved",
+  const { user, loading: authLoading } = useAuth();
+  const [nextAppointmentData, setNextAppointmentData] = useState<Appointment | null | undefined>(undefined); // undefined: loading, null: no appt, Appointment: found
+  const [isLoadingAppointment, setIsLoadingAppointment] = useState(true);
+  const [appointmentError, setAppointmentError] = useState<string | null>(null);
+
+  const fetchNextAppointment = useCallback(async () => {
+    if (!user) {
+      setIsLoadingAppointment(false);
+      setNextAppointmentData(null);
+      return;
+    }
+
+    setIsLoadingAppointment(true);
+    setAppointmentError(null);
+    try {
+      const allAppointments = await getAppointments();
+      const userAppointments = allAppointments.filter(
+        (appt) => appt.patient_user_id === user.id && appt.status === "Approved"
+      );
+
+      const upcomingAppointments = userAppointments
+        .filter(appt => {
+          try {
+            return parseISO(appt.date) >= new Date(new Date().setHours(0,0,0,0)); // From today onwards
+          } catch (e) {
+            console.warn(`Invalid date format for appointment ${appt.id}: ${appt.date}`);
+            return false;
+          }
+        })
+        .sort((a, b) => {
+            // Sort by date, then by time (assuming time is in a sortable format like HH:MM AM/PM or 24hr)
+            const dateA = parseISO(a.date).getTime();
+            const dateB = parseISO(b.date).getTime();
+            if (dateA !== dateB) return dateA - dateB;
+            // Basic time sort, can be improved if time format is complex
+            return a.time.localeCompare(b.time);
+        });
+      
+      setNextAppointmentData(upcomingAppointments.length > 0 ? upcomingAppointments[0] : null);
+    } catch (error: any) {
+      console.error("Failed to fetch next appointment:", error);
+      setAppointmentError(error.message || "Could not load appointment details.");
+      setNextAppointmentData(null);
+    } finally {
+      setIsLoadingAppointment(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!authLoading) {
+      fetchNextAppointment();
+    }
+  }, [authLoading, fetchNextAppointment]);
+
+  const formatAppointmentTime = (appointment: Appointment): string => {
+    try {
+      const date = parseISO(appointment.date);
+      if (isToday(date)) {
+        return `Today, ${appointment.time}`;
+      }
+      if (isTomorrow(date)) {
+        return `Tomorrow, ${appointment.time}`;
+      }
+      return `${format(date, 'EEE, MMM d')} at ${appointment.time}`;
+    } catch (e) {
+        return `On ${appointment.date} at ${appointment.time}`;
+    }
   };
 
   const quickLinks = [
@@ -52,44 +120,63 @@ export default function PatientDashboardPage() {
         </Button>
       </div>
 
-      {nextAppointment && (
-        <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 
+      <Card className="shadow-xl hover:shadow-2xl transition-all duration-300 
                        bg-gradient-to-br from-[hsl(var(--primary)/0.05)] to-[hsl(var(--accent)/0.05)] 
                        dark:from-[hsl(var(--primary)/0.1)] dark:to-[hsl(var(--accent)/0.1)]
                        border-primary/30 dark:border-primary/20 overflow-hidden">
-          <CardHeader>
-            <CardTitle className="flex items-center text-foreground">
-              <CalendarDays className="mr-3 h-6 w-6 text-primary" />
-              Your Next Appointment
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <Image 
-                src="https://placehold.co/100x100.png" 
-                alt={nextAppointment.doctor} 
-                width={80} 
-                height={80} 
-                className="rounded-full border-2 border-muted group-hover:border-primary/50 transition-colors duration-300"
-                data-ai-hint="doctor portrait" 
-            />
+        <CardHeader>
+          <CardTitle className="flex items-center text-foreground">
+            <CalendarDays className="mr-3 h-6 w-6 text-primary" />
+            Your Next Appointment
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row items-start sm:items-center gap-4 min-h-[130px]"> {/* Added min-height */}
+          <Image 
+              src={nextAppointmentData?.doctor_image_url || "https://placehold.co/100x100.png"} 
+              alt={nextAppointmentData ? nextAppointmentData.doctor_name : "Doctor placeholder"}
+              width={80} 
+              height={80} 
+              className="rounded-full border-2 border-muted group-hover:border-primary/50 transition-colors duration-300"
+              data-ai-hint="doctor portrait" 
+          />
+          {isLoadingAppointment ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading appointment...
+            </div>
+          ) : appointmentError ? (
+            <div className="flex-1 text-destructive">
+              <div className="flex items-center">
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                <p className="font-semibold">Error loading appointment</p>
+              </div>
+              <p className="text-sm ">{appointmentError}</p>
+            </div>
+          ) : nextAppointmentData ? (
+            <>
+              <div className="flex-1">
+                <p className="text-xl font-semibold text-foreground">{nextAppointmentData.doctor_name}</p>
+                <p className="text-md text-muted-foreground">{nextAppointmentData.specialty}</p>
+                <p className="text-lg text-foreground mt-1">{formatAppointmentTime(nextAppointmentData)}</p>
+              </div>
+              <div className="sm:text-right">
+                <p className={`text-sm font-medium px-3 py-1 rounded-full ${
+                  nextAppointmentData.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-700/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-700/30 dark:text-yellow-300'
+                }`}>
+                  Status: {nextAppointmentData.status}
+                </p>
+                <Button variant="outline" size="sm" className="mt-3 transition-all duration-300 hover:shadow-md active:scale-95" asChild>
+                  <Link href="/patient/appointments">Manage Appointment</Link>
+                </Button>
+              </div>
+            </>
+          ) : (
             <div className="flex-1">
-              <p className="text-xl font-semibold text-foreground">{nextAppointment.doctor}</p>
-              <p className="text-md text-muted-foreground">{nextAppointment.specialty}</p>
-              <p className="text-lg text-foreground mt-1">{nextAppointment.time}</p>
+              <p className="text-lg font-semibold text-foreground">No upcoming appointments.</p>
+              <p className="text-md text-muted-foreground">You're all caught up!</p>
             </div>
-            <div className="sm:text-right">
-              <p className={`text-sm font-medium px-3 py-1 rounded-full ${
-                nextAppointment.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-700/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-700/30 dark:text-yellow-300'
-              }`}>
-                Status: {nextAppointment.status}
-              </p>
-              <Button variant="outline" size="sm" className="mt-3 transition-all duration-300 hover:shadow-md active:scale-95" asChild>
-                <Link href="/patient/appointments">Manage Appointment</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader>
@@ -137,5 +224,3 @@ export default function PatientDashboardPage() {
     </div>
   );
 }
-
-    
