@@ -178,19 +178,22 @@ export default function DoctorDashboardPage() {
           <CardTitle className="flex items-center"><Activity className="mr-2 h-5 w-5 text-primary" /> Quick Actions</CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
+          <Button variant="outline" className="w-full justify-start text-sm py-4 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
              <Link href="/doctor/patients">
-                <Users className="mr-2 h-5 w-5"/> Manage My Patients
+                <Users className="h-5 w-5"/> 
+                <span>Manage My Patients</span>
              </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
+          <Button variant="outline" className="w-full justify-start text-sm py-4 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
             <Link href="/doctor/appointments">
-                <CheckCircle className="mr-2 h-5 w-5 text-green-500 dark:text-green-400"/> Review Pending Appointments
+                <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400"/>
+                <span>Review Pending Appointments</span>
             </Link>
           </Button>
-           <Button variant="outline" className="w-full justify-start text-base py-6 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
+           <Button variant="outline" className="w-full justify-start text-sm py-4 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95" asChild>
              <Link href="/doctor/appointments"> {/* Both link to the same page for now */}
-                <CalendarDays className="mr-2 h-5 w-5"/> Manage All Appointments
+                <CalendarDays className="h-5 w-5"/>
+                <span>Manage All Appointments</span>
             </Link>
           </Button>
         </CardContent>
@@ -198,5 +201,4 @@ export default function DoctorDashboardPage() {
     </div>
   );
 }
-
     
