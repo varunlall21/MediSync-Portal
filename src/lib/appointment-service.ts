@@ -8,7 +8,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 export interface DoctorInfo {
   id: string; // uuid from Supabase
   name: string;
-  specialty?: string | null | undefined; // Made optional/nullable
+  specialty?: string | null | undefined; 
   created_at: string; // Supabase timestamp
   image_url?: string | null;
 }
@@ -26,17 +26,19 @@ export interface Appointment {
   reason?: string | null;
   status: "Pending" | "Approved" | "Cancelled" | "Completed";
   booked_at: string; // Supabase timestamp
+  doctor_image_url?: string | null; // Added to match dashboard usage
 }
 
 export interface NewAppointmentData {
   patient_name: string;
   patient_user_id: string | null;
   doctor_id: string;
-  doctor_name: string; // Pass this from selected doctor
-  specialty: string;   // Pass this from selected doctor
-  date: string; // YYYY-MM-DD
+  doctor_name: string; 
+  specialty: string;   
+  date: string; 
   time: string;
   reason?: string;
+  doctor_image_url?: string | null; // Optional: if you want to store this at booking time
 }
 
 export interface NewDoctorData {
@@ -56,13 +58,13 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
   try {
     const { data, error, status, count } = await supabase
       .from(DOCTORS_TABLE)
-      .select('*', { count: 'exact' }) // Request count for debugging
+      .select('*', { count: 'exact' }) 
       .order('name', { ascending: true });
 
     if (error) {
       let errorMessage = `Error fetching doctors from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the value of NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect for your Supabase project or your server hasn't been restarted after changing it. Please verify the key *value* in your Supabase project API settings and ensure it's correctly set in .env.local. The key being used by the client starts with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined').substring(0,5)}" and ends with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined').slice(-5)}"`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the value of NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect for your Supabase project or your server hasn't been restarted after changing it. Please verify the key *value* in your Supabase project API settings and ensure it's correctly set in .env.local. The key being used by the client starts with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined_or_hardcoded').substring(0,5)}" and ends with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined_or_hardcoded').slice(-5)}"`;
       } else if (status === 404) {
          errorMessage += `\n\n[DEVELOPER HINT] A 404 error likely means the table '${DOCTORS_TABLE}' was not found. Please ensure the table exists in your Supabase project.`;
       } else {
@@ -77,9 +79,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
     if (data && data.length > 0) {
       console.log("[AppointmentService] First few fetched doctor records (raw from Supabase):", JSON.stringify(data.slice(0, 3), null, 2));
       
-      // Map data to ensure 'specialty' property exists, checking for common miscasings or alternative names
       const mappedData = data.map((doc: any) => {
-        // Prioritize 'specialty', then 'Specialty', then 'speciality'
         const foundSpecialty = doc.specialty || doc.Specialty || doc.speciality || null;
         return {
           ...doc,
@@ -87,7 +87,6 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
         };
       });
       console.log("[AppointmentService] First few mapped doctor records (for app use):", JSON.stringify(mappedData.slice(0, 3), null, 2));
-
 
       const specialtiesFoundInMappedData = mappedData.some(doc => doc.specialty && typeof doc.specialty === 'string' && doc.specialty.trim() !== '');
       if (!specialtiesFoundInMappedData) {
@@ -99,7 +98,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
     } else {
       console.log(`[AppointmentService] No doctors found in the '${DOCTORS_TABLE}' table or RLS preventing access.`);
     }
-    return []; // Return empty array if no data or error handled above
+    return []; 
   } catch (caughtError: any) {
     const errorMessage = caughtError.message || `An unexpected error occurred in getDoctors: ${JSON.stringify(caughtError)}`;
     console.error(
@@ -152,7 +151,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     if (error) {
       let errorMessage = `Error fetching appointments from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key is incorrect. Please check supabaseClient.ts and/or your .env.local file and restart the server.`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key is incorrect. Please check supabaseClient.ts and/or your .env.local file and restart the server. The key being used by the client starts with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined_or_hardcoded').substring(0,5)}" and ends with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined_or_hardcoded').slice(-5)}"`;
       } else {
          errorMessage += `\n\n[DEVELOPER HINT] This could be due to network issues, incorrect table name ('${APPOINTMENTS_TABLE}'), or Row Level Security (RLS) policies preventing access. Count: ${count}. Data: ${JSON.stringify(data)}`;
       }
@@ -163,7 +162,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
      if (data && data.length === 0 && (count || 0) > 0) {
       console.warn(`[AppointmentService] Fetched 0 appointments, but Supabase count is ${count}. This strongly suggests RLS policies are filtering out all records for the current user for the table '${APPOINTMENTS_TABLE}'.`);
     }
-    return data || [];
+    return (data || []) as Appointment[];
   } catch (caughtError: any) {
      const errorMessage = caughtError.message || `An unexpected error occurred in getAppointments: ${JSON.stringify(caughtError)}`;
     console.error(
@@ -177,7 +176,7 @@ export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData
   try {
     const appointmentToInsert = {
       ...newAppointmentData,
-      status: 'Pending' as Appointment['status'], // Default status
+      status: 'Pending' as Appointment['status'], 
     };
 
     const { data, error, status } = await supabase
@@ -196,7 +195,7 @@ export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData
       console.error(errorMessage);
       throw new Error(errorMessage);
     }
-    return data;
+    return data as Appointment;
   } catch (caughtError: any) {
     const errorMessage = caughtError.message || `An unexpected error occurred in addAppointmentEntry: ${JSON.stringify(caughtError)}`;
     console.error(
@@ -225,7 +224,7 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
       console.error(errorMessage);
       throw new Error(errorMessage);
     }
-    return data;
+    return data as Appointment;
   } catch (caughtError: any) {
     const errorMessage = caughtError.message || `An unexpected error occurred in updateAppointmentStatusEntry: ${JSON.stringify(caughtError)}`;
     console.error(

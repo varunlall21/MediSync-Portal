@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Added CardDescription
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig, HeartPulse, Brain, FileSpreadsheet, Loader2, AlertTriangle } from "lucide-react";
 import Link from "next/link";
@@ -17,7 +17,7 @@ export default function PatientDashboardPage() {
   const [isLoadingAppointment, setIsLoadingAppointment] = useState(true);
   const [appointmentError, setAppointmentError] = useState<string | null>(null);
 
-  const parseTime = (timeStr: string): number => {
+  const parseTime = useCallback((timeStr: string): number => {
     const [timePart, modifier] = timeStr.toUpperCase().split(' ');
     let [hours, minutes] = timePart.split(':').map(Number);
 
@@ -27,7 +27,7 @@ export default function PatientDashboardPage() {
         hours = 0;
     }
     return hours * 60 + minutes; // Total minutes from midnight
-  };
+  }, []);
 
   const fetchNextAppointment = useCallback(async () => {
     if (!user) {
@@ -39,28 +39,27 @@ export default function PatientDashboardPage() {
 
     setIsLoadingAppointment(true);
     setAppointmentError(null);
-    console.log("[PatientDashboard] Fetching next appointment for user:", user.id);
+    console.log("[PatientDashboard] Fetching next appointment for user ID:", user.id);
 
     try {
       const allAppointments = await getAppointments();
-      console.log(`[PatientDashboard] All appointments fetched for user from service: ${allAppointments.length}`, allAppointments.slice(0, 3));
+      console.log(`[PatientDashboard] Raw appointments fetched from service for ANY user (count: ${allAppointments.length}):`, allAppointments.slice(0, 5).map(a => ({id: a.id, patient_user_id: a.patient_user_id, status: a.status, date: a.date, time: a.time })));
 
-      const userAppointments = allAppointments.filter(
-        (appt) => appt.patient_user_id === user.id && appt.status === "Approved"
+      const userApprovedAppointments = allAppointments.filter(
+        (appt) => appt.patient_user_id === user.id && appt.status?.toLowerCase() === "approved"
       );
-      console.log(`[PatientDashboard] Filtered for 'Approved' status & current user: ${userAppointments.length}`, userAppointments.slice(0, 3));
+      console.log(`[PatientDashboard] Appointments for user ${user.id} with status 'approved' (case-insensitive) (count: ${userApprovedAppointments.length}):`, userApprovedAppointments.slice(0, 3).map(a => ({id: a.id, status: a.status, date: a.date, time: a.time })));
 
-      const upcomingAppointments = userAppointments
+      const upcomingAppointments = userApprovedAppointments
         .filter(appt => {
           try {
-            // Compare date part only, ensuring we consider "today" correctly
-            const appointmentDate = parseISO(appt.date); // Parses "YYYY-MM-DD" as UTC midnight
-            
+            const appointmentDate = parseISO(appt.date); 
             const today = new Date();
-            // Create a date object for the start of today in local time, then convert to UTC for comparison to ensure date part matches
             const startOfTodayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-
-            return appointmentDate.getTime() >= startOfTodayUTC.getTime(); // True if appointment is today or in the future
+            const isUpcoming = appointmentDate.getTime() >= startOfTodayUTC.getTime();
+            // For detailed debugging of date filtering:
+            // console.log(`[PatientDashboard] Checking Appt ID ${appt.id}: Date: ${appt.date}, ApptDateUTC: ${appointmentDate.toISOString()}, StartTodayUTC: ${startOfTodayUTC.toISOString()}, isUpcoming: ${isUpcoming}`);
+            return isUpcoming;
           } catch (e) {
             console.warn(`[PatientDashboard] Invalid date format for appointment ${appt.id}: ${appt.date}`, e);
             return false;
@@ -69,23 +68,19 @@ export default function PatientDashboardPage() {
         .sort((a, b) => {
             const dateA = parseISO(a.date);
             const dateB = parseISO(b.date);
-
-            const timeAVal = dateA.getTime();
-            const timeBVal = dateB.getTime();
-
-            if (timeAVal !== timeBVal) return timeAVal - timeBVal; // Sort by date first
+            const dateDiff = dateA.getTime() - dateB.getTime();
+            if (dateDiff !== 0) return dateDiff; // Sort by date first
             
-            // If dates are the same, sort by time
             const numericTimeA = parseTime(a.time);
             const numericTimeB = parseTime(b.time);
-            
-            return numericTimeA - numericTimeB;
+            return numericTimeA - numericTimeB; // Then by time
         });
       
-      console.log(`[PatientDashboard] Filtered for upcoming (today/future) & sorted: ${upcomingAppointments.length}`, upcomingAppointments.slice(0, 3));
+      console.log(`[PatientDashboard] Filtered for upcoming (today/future) & sorted (count: ${upcomingAppointments.length}):`, upcomingAppointments.slice(0, 3).map(a => ({id: a.id, date: a.date, time: a.time })));
       
-      setNextAppointmentData(upcomingAppointments.length > 0 ? upcomingAppointments[0] : null);
-      console.log('[PatientDashboard] Next appointment set to:', upcomingAppointments.length > 0 ? upcomingAppointments[0] : 'None');
+      const nextOne = upcomingAppointments.length > 0 ? upcomingAppointments[0] : null;
+      setNextAppointmentData(nextOne);
+      console.log('[PatientDashboard] Next upcoming approved appointment set to:', nextOne ? {id: nextOne.id, date: nextOne.date, time: nextOne.time, doctor: nextOne.doctor_name} : 'None');
 
     } catch (error: any) {
       console.error("[PatientDashboard] Failed to fetch next appointment:", error);
@@ -94,12 +89,12 @@ export default function PatientDashboardPage() {
     } finally {
       setIsLoadingAppointment(false);
     }
-  }, [user]);
+  }, [user, parseTime]);
 
   useEffect(() => {
-    if (!authLoading && user) { // Ensure user is loaded before fetching
+    if (!authLoading && user) { 
       fetchNextAppointment();
-    } else if (!authLoading && !user) { // If auth loaded and no user, stop loading and set no appointment
+    } else if (!authLoading && !user) { 
       setIsLoadingAppointment(false);
       setNextAppointmentData(null);
     }
@@ -200,7 +195,7 @@ export default function PatientDashboardPage() {
               </div>
               <div className="sm:text-right">
                 <p className={`text-sm font-medium px-3 py-1 rounded-full ${
-                  nextAppointmentData.status === 'Approved' ? 'bg-green-100 text-green-700 dark:bg-green-700/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-700/30 dark:text-yellow-300'
+                  nextAppointmentData.status?.toLowerCase() === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-700/30 dark:text-green-300' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-700/30 dark:text-yellow-300'
                 }`}>
                   Status: {nextAppointmentData.status}
                 </p>
@@ -263,5 +258,4 @@ export default function PatientDashboardPage() {
     </div>
   );
 }
-
     
