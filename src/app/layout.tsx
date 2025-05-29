@@ -1,7 +1,7 @@
 
 "use client"; // Required for useEffect
 
-import React, { useEffect } from 'react'; // Ensure React is imported for React.Fragment
+import React, { useEffect } from 'react'; // Ensure React is imported
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
@@ -29,13 +29,13 @@ export default function RootLayout({
   }, []);
 
   return (
-    <html lang="en" suppressHydrationWarning> 
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          <React.Fragment key="medisync-app-root-children"> {/* Explicit keyed fragment */}
+          <div key="medisync-app-root-wrapper"> {/* Explicitly keyed div as single child for AuthProvider */}
             {children}
             <Toaster />
-          </React.Fragment>
+          </div>
         </AuthProvider>
       </body>
     </html>

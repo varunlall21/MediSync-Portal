@@ -2,9 +2,8 @@
 "use client";
 
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-// import { useRouter } from 'next/navigation'; // No longer used directly here
 import { useToast } from '@/hooks/use-toast';
 
 export type UserRole = 'admin' | 'doctor' | 'patient' | null;
@@ -18,7 +17,7 @@ interface AuthContextType {
   signup: (email: string, pass: string) => Promise<SupabaseUser | null>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  assignRole: (newRole: UserRole) => void; // Kept for potential UI-driven role changes in guest mode
+  assignRole: (newRole: UserRole) => void;
   sendPasswordReset: (email: string) => Promise<void>;
 }
 
@@ -46,14 +45,13 @@ const createMockGuestUser = (): SupabaseUser => {
     },
     aud: 'authenticated',
     created_at: new Date().toISOString(),
-    // Ensure all required fields for SupabaseUser are present
     confirmed_at: new Date().toISOString(),
     email_confirmed_at: new Date().toISOString(),
     phone: '',
     last_sign_in_at: new Date().toISOString(),
-    identities: [], // Add if missing
-    updated_at: new Date().toISOString(), // Add if missing
-  } as SupabaseUser; // Type assertion
+    identities: [],
+    updated_at: new Date().toISOString(),
+  } as SupabaseUser;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -61,30 +59,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
   const [initialLoading, setInitialLoading] = useState(true);
-  // const router = useRouter(); // Not directly used for navigation here
   const { toast } = useToast();
 
   useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
+    let isMounted = true;
 
     const fetchInitialSession = async () => {
-      const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error fetching initial session:", error);
-        // Potentially handle error, e.g. by setting loading to false with guest user
-      }
-      if (isMounted) {
-        setSession(currentSession);
-        const currentUser = currentSession?.user ?? null;
-        if (currentUser) {
-          setUser(currentUser);
-          setRole(getMockRole(currentUser.email));
-        } else {
-          const guestUser = createMockGuestUser();
-          setUser(guestUser);
-          setRole(getMockRole(guestUser.email));
+      try {
+        const { data: { session: currentSession }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Error fetching initial session:", error);
+          if (isMounted) {
+            const guestUser = createMockGuestUser();
+            setUser(guestUser);
+            setRole(getMockRole(guestUser.email));
+            setInitialLoading(false);
+          }
+          return;
         }
-        setInitialLoading(false);
+        if (isMounted) {
+          setSession(currentSession);
+          const currentUser = currentSession?.user ?? null;
+          if (currentUser) {
+            setUser(currentUser);
+            setRole(getMockRole(currentUser.email));
+          } else {
+            const guestUser = createMockGuestUser();
+            setUser(guestUser);
+            setRole(getMockRole(guestUser.email));
+          }
+          setInitialLoading(false);
+        }
+      } catch (e) {
+        console.error("Exception during initial session fetch:", e);
+        if (isMounted) {
+            const guestUser = createMockGuestUser();
+            setUser(guestUser);
+            setRole(getMockRole(guestUser.email));
+            setInitialLoading(false);
+        }
       }
     };
 
@@ -103,8 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(guestUser);
             setRole(getMockRole(guestUser.email));
           }
-          if (initialLoading) { // Only change initialLoading if it was true
+          // Only set initialLoading to false if it was still true
+          // This prevents resetting loading state on subsequent auth changes
+          if (initialLoading && _event !== 'INITIAL_SESSION') { 
             setInitialLoading(false);
+          } else if (_event === 'INITIAL_SESSION' && initialLoading) {
+             setInitialLoading(false); // Also handle initial session event
           }
         }
       }
@@ -114,13 +131,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [initialLoading]); // Dependency on initialLoading ensures this runs until initial load is complete
+  }, [initialLoading]); // Keep initialLoading to ensure it runs until resolved
 
   const login = useCallback(async (email: string, pass: string): Promise<SupabaseUser | null> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
-      // onAuthStateChange will handle setUser and setRole
       return data.user;
     } catch (error: any) {
       console.error("Supabase login error:", error);
@@ -131,10 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signup = useCallback(async (email: string, pass: string): Promise<SupabaseUser | null> => {
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password: pass,
-      });
+      const { data, error } = await supabase.auth.signUp({ email, password: pass });
       if (error) throw error;
       if (data.user && !data.session && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
          toast({ title: "Signup Almost Complete!", description: "Please check your email to confirm your account." });
@@ -153,8 +166,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // onAuthStateChange handles setting user to guest and role.
-      // Navigation is handled by page useEffects based on auth state.
+      // onAuthStateChange handles setting user to guest and role
     } catch (error: any) {
       console.error("Supabase logout error:", error);
       toast({ title: "Logout Error", description: error.message || "Failed to logout.", variant: "destructive" });
@@ -166,19 +178,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : undefined, // Ensure this callback route exists or is handled
+          redirectTo: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : undefined,
         },
       });
       if (error) throw error;
-      // Supabase handles redirection. onAuthStateChange will manage user state upon return.
     } catch (error: any) {
       console.error("Supabase Google sign-in error:", error.message);
       toast({ title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
     }
   }, [toast]);
 
-  // This function is mostly for UI demonstrations if a guest user needs to "change role" locally.
-  // Real role changes for authenticated users would be managed via backend/Supabase.
   const assignRole = useCallback((newRole: UserRole) => {
     setRole(newRole);
     if (user && user.id === 'guest-preview-user') {
@@ -189,7 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const sendPasswordReset = useCallback(async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/update-password' : undefined, // Ensure this route exists
+        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/update-password' : undefined,
       });
       if (error) throw error;
       toast({ title: "Password Reset Email Sent", description: "If an account exists for this email, a password reset link has been sent." });
@@ -199,18 +208,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [toast]);
 
-  const contextValue: AuthContextType = { 
-    user, 
-    session, 
-    role, 
-    loading: initialLoading, 
-    login, 
-    signup, 
-    logout, 
-    signInWithGoogle, 
-    assignRole, 
-    sendPasswordReset 
-  };
+  const contextValue: AuthContextType = useMemo(() => ({
+    user,
+    session,
+    role,
+    loading: initialLoading,
+    login,
+    signup,
+    logout,
+    signInWithGoogle,
+    assignRole,
+    sendPasswordReset,
+  }), [user, session, role, initialLoading, login, signup, logout, signInWithGoogle, assignRole, sendPasswordReset]);
 
   return (
     <AuthContext.Provider value={contextValue}>
