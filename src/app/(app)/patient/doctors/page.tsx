@@ -1,15 +1,23 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Stethoscope, Search, Filter, CalendarPlus, Loader2, AlertTriangle } from "lucide-react";
+import { Stethoscope, Search, Filter as FilterIcon, CalendarPlus, Loader2, AlertTriangle, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { getDoctors, type DoctorInfo } from '@/lib/appointment-service';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function PatientFindDoctorsPage() {
   const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
@@ -18,13 +26,22 @@ export default function PatientFindDoctorsPage() {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  const [selectedSpecialtyFilter, setSelectedSpecialtyFilter] = useState<string | null>(null);
+  const [allSpecialties, setAllSpecialties] = useState<string[]>([]);
+
   useEffect(() => {
     const loadDoctors = async () => {
       setIsLoading(true);
       setFetchError(null);
       try {
         const fetchedDoctors = await getDoctors();
-        setDoctors(fetchedDoctors || []); // Ensure doctors is always an array
+        setDoctors(fetchedDoctors || []); 
+        if (fetchedDoctors && fetchedDoctors.length > 0) {
+          const uniqueSpecs = Array.from(new Set(fetchedDoctors.map(doc => doc.specialty).filter(Boolean) as string[]));
+          setAllSpecialties(uniqueSpecs.sort());
+        } else {
+          setAllSpecialties([]);
+        }
       } catch (error: any) {
         console.error("PatientFindDoctorsPage - Failed to fetch doctors:", error.message);
         const detailedError = error.message || "Could not load doctor list. Please check console for more details.";
@@ -33,7 +50,7 @@ export default function PatientFindDoctorsPage() {
           title: "Error Loading Doctors", 
           description: detailedError, 
           variant: "destructive",
-          duration: 10000 // Keep error toast longer
+          duration: 10000 
         });
       } finally {
         setIsLoading(false);
@@ -42,14 +59,32 @@ export default function PatientFindDoctorsPage() {
     loadDoctors();
   }, [toast]);
 
-  const filteredDoctors = doctors.filter(doctor => {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    const nameMatch = doctor.name && typeof doctor.name === 'string' && 
-                      doctor.name.toLowerCase().includes(lowerSearchTerm);
-    const specialtyMatch = doctor.specialty && typeof doctor.specialty === 'string' && 
-                           doctor.specialty.toLowerCase().includes(lowerSearchTerm);
-    return nameMatch || specialtyMatch;
-  });
+  const filteredAndSortedDoctors = useMemo(() => {
+    let result = [...doctors];
+
+    if (selectedSpecialtyFilter) {
+      result = result.filter(doctor => 
+        doctor.specialty && doctor.specialty.toLowerCase() === selectedSpecialtyFilter.toLowerCase()
+      );
+    }
+
+    if (searchTerm) {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      result = result.filter(doctor => {
+        const nameMatch = doctor.name && typeof doctor.name === 'string' && 
+                          doctor.name.toLowerCase().includes(lowerSearchTerm);
+        
+        // If a specialty filter is NOT active, search term can also apply to specialty.
+        // If a specialty filter IS active, we've already filtered by specialty, so search term applies mainly to name.
+        const specialtySearchMatch = !selectedSpecialtyFilter && doctor.specialty && 
+                                     typeof doctor.specialty === 'string' && 
+                                     doctor.specialty.toLowerCase().includes(lowerSearchTerm);
+        return nameMatch || specialtySearchMatch;
+      });
+    }
+    return result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [doctors, searchTerm, selectedSpecialtyFilter]);
+
 
   if (isLoading) {
     return (
@@ -76,9 +111,28 @@ export default function PatientFindDoctorsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline" className="w-full sm:w-auto transition-all duration-300 hover:shadow-md active:scale-95">
-              <Filter className="mr-2 h-4 w-4" /> Filter by Specialty
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="w-full sm:w-auto transition-all duration-300 hover:shadow-md active:scale-95">
+                  <FilterIcon className="mr-2 h-4 w-4" /> 
+                  {selectedSpecialtyFilter ? `Specialty: ${selectedSpecialtyFilter}` : "Filter by Specialty"}
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px] sm:w-auto">
+                <DropdownMenuLabel>Filter by Specialty</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={() => setSelectedSpecialtyFilter(null)}>
+                  All Specialties
+                </DropdownMenuItem>
+                {allSpecialties.map(spec => (
+                  <DropdownMenuItem key={spec} onSelect={() => setSelectedSpecialtyFilter(spec)}>
+                    {spec}
+                  </DropdownMenuItem>
+                ))}
+                 {allSpecialties.length === 0 && <DropdownMenuItem disabled>No specialties found</DropdownMenuItem>}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardContent>
       </Card>
@@ -104,26 +158,26 @@ export default function PatientFindDoctorsPage() {
         </Card>
       )}
 
-      {!fetchError && doctors.length === 0 && !isLoading && ( // Added !isLoading check
+      {!fetchError && doctors.length === 0 && !isLoading && (
          <div className="mt-8 p-10 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
             <Stethoscope className="mx-auto h-12 w-12 mb-4 text-primary/50" />
             <h3 className="text-xl font-semibold mb-2">No Doctors Available</h3>
             <p>No doctors are currently listed in the system, or none match your current filters.</p>
-            <p className="text-sm mt-1">If you believe this is an error, please contact support or check RLS policies if data is expected.</p>
+            <p className="text-sm mt-1">If you believe this is an error, please contact support or check RLS policies if data is expected. You can also try adding doctors via the Admin dashboard.</p>
         </div>
        )}
 
-      {!fetchError && doctors.length > 0 && filteredDoctors.length === 0 && !isLoading && ( // Added !isLoading check
+      {!fetchError && doctors.length > 0 && filteredAndSortedDoctors.length === 0 && !isLoading && ( 
          <div className="mt-8 p-10 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
             <Search className="mx-auto h-12 w-12 mb-4 text-primary/50" />
             <h3 className="text-xl font-semibold mb-2">No Doctors Found</h3>
-            <p>No doctors found matching your search criteria "{searchTerm}". Try a different search term.</p>
+            <p>No doctors found matching your search criteria "{searchTerm}" {selectedSpecialtyFilter ? `and specialty "${selectedSpecialtyFilter}"` : ""}. Try different search terms or filters.</p>
         </div>
        )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredDoctors.map(doctor => (
-          <Card key={doctor.id} className="shadow-xl hover:shadow-2xl dark:hover:shadow-primary/20 transition-all duration-300 overflow-hidden group">
+        {filteredAndSortedDoctors.map(doctor => (
+          <Card key={doctor.id} className="shadow-xl hover:shadow-2xl dark:hover:shadow-primary/20 transition-all duration-300 overflow-hidden group flex flex-col">
             <CardHeader className="p-0 relative">
                <Image 
                 src={doctor.image_url || `https://placehold.co/400x300.png?text=${doctor.name ? doctor.name.charAt(0) : 'D'}`} 
@@ -134,15 +188,17 @@ export default function PatientFindDoctorsPage() {
                 data-ai-hint="doctor portrait"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-t-lg"></div>
-              <div className="absolute bottom-0 left-0 p-4">
-                <CardTitle className="text-xl text-primary-foreground flex items-center mb-1">
+              <div className="absolute bottom-0 left-0 p-4 w-full">
+                <CardTitle className="text-xl text-primary-foreground flex items-center mb-0.5 truncate" title={doctor.name || 'N/A'}>
                   {doctor.name || 'N/A'}
                 </CardTitle>
-                <CardDescription className="text-base text-accent-foreground/80">{doctor.specialty || 'N/A'}</CardDescription>
+                <CardDescription className="text-sm text-accent-foreground/90 truncate" title={doctor.specialty || 'N/A'}>
+                  {doctor.specialty || 'N/A'}
+                </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="p-4">
-              <Button className="w-full group-hover:bg-accent transition-all duration-300 hover:shadow-md active:scale-95" asChild>
+            <CardContent className="p-4 flex-grow flex flex-col justify-end">
+              <Button className="w-full group-hover:bg-accent transition-all duration-300 hover:shadow-md active:scale-95 mt-auto" asChild>
                 <Link href={`/patient/book-appointment?doctorId=${doctor.id}`}>
                   <CalendarPlus className="mr-2 h-4 w-4" /> Book Appointment
                 </Link>
@@ -154,3 +210,4 @@ export default function PatientFindDoctorsPage() {
     </div>
   );
 }
+
