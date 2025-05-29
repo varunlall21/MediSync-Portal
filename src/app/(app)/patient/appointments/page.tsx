@@ -23,39 +23,42 @@ export default function PatientAppointmentsPage() {
   const { user, loading: authLoading } = useAuth();
 
   const fetchAppointments = useCallback(async () => {
-    if (!user || user.id === 'guest-preview-user') { // Don't fetch for guest or if no user
+    if (!user) { 
       setAppointments([]);
       setIsLoading(false);
-      if (user && user.id === 'guest-preview-user') {
-         toast({ title: "Guest Mode", description: "Appointment history is not available for guest users. Please log in.", variant: "default" });
-      }
       return;
     }
     
     setIsLoading(true);
     try {
       const allAppointments = await getAppointments();
+      // RLS should handle filtering by patient_user_id, but we can still filter here
+      // to be safe or if RLS isn't fully restrictive yet.
       const userAppointments = allAppointments.filter(
         (appt: Appointment) => appt.patient_user_id === user.id
       ).sort((a, b) => new Date(b.booked_at).getTime() - new Date(a.booked_at).getTime());
       setAppointments(userAppointments);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch appointments:", error);
-      toast({ title: "Error", description: "Could not load your appointments.", variant: "destructive" });
+      toast({ title: "Error", description: error.message || "Could not load your appointments.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   }, [user, toast]);
 
   useEffect(() => {
-    if (!authLoading) { // Ensure auth state is resolved before fetching
+    // Wait for auth to resolve and user object to be available
+    if (!authLoading && user) { 
         fetchAppointments();
+    } else if (!authLoading && !user) {
+        // If auth resolved and no user, clear appointments and stop loading
+        setAppointments([]);
+        setIsLoading(false);
     }
-  }, [authLoading, fetchAppointments]);
+  }, [authLoading, user, fetchAppointments]);
 
   const handleCancelAppointment = async (appointmentId: string) => {
     const originalAppointments = [...appointments];
-    // Optimistically update UI
     setAppointments(prev => prev.map(appt => appt.id === appointmentId ? {...appt, status: "Cancelled"} : appt));
 
     try {
@@ -65,14 +68,14 @@ export default function PatientAppointmentsPage() {
           title: "Appointment Cancelled",
           description: `Your appointment with ${updatedAppointment.doctor_name} has been cancelled.`,
         });
-        fetchAppointments(); // Re-fetch to confirm
+        fetchAppointments(); 
       } else {
         throw new Error("Failed to cancel appointment on server.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Cancel appointment error:", error);
-      toast({ title: "Error", description: "Could not cancel appointment. Please try again.", variant: "destructive" });
-      setAppointments(originalAppointments); // Revert optimistic update
+      toast({ title: "Error", description: error.message || "Could not cancel appointment. Please try again.", variant: "destructive" });
+      setAppointments(originalAppointments);
     }
   };
 
@@ -106,7 +109,7 @@ export default function PatientAppointmentsPage() {
     );
   }
   
-  if (!user || user.id === 'guest-preview-user') {
+  if (!user) { // This check ensures that if user logs out, this page doesn't try to render data
      return (
         <div className="space-y-6">
           <h1 className="text-3xl font-bold tracking-tight">My Appointments</h1>

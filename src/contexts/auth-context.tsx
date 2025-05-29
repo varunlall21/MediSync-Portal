@@ -17,7 +17,7 @@ interface AuthContextType {
   signup: (email: string, pass: string) => Promise<SupabaseUser | null>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  assignRole: (newRole: UserRole) => void; // Kept for potential future use if roles are managed differently
+  assignRole: (newRole: UserRole) => void; 
   sendPasswordReset: (email: string) => Promise<void>;
 }
 
@@ -29,31 +29,6 @@ const getMockRole = (email?: string | null): UserRole => {
   if (email.includes('doctor')) return 'doctor';
   return 'patient';
 };
-
-const createMockGuestUser = (): SupabaseUser => {
-  const guestEmail = 'guest@example.com';
-  return {
-    id: 'guest-preview-user',
-    email: guestEmail,
-    app_metadata: { provider: 'email', providers: ['email'] },
-    user_metadata: {
-      email: guestEmail,
-      name: 'Guest Preview',
-      full_name: 'Guest Preview',
-      avatar_url: '',
-      picture: '',
-    },
-    aud: 'authenticated',
-    created_at: new Date().toISOString(),
-    confirmed_at: new Date().toISOString(),
-    email_confirmed_at: new Date().toISOString(),
-    phone: '',
-    last_sign_in_at: new Date().toISOString(),
-    identities: [],
-    updated_at: new Date().toISOString(),
-  } as SupabaseUser; // Cast to SupabaseUser
-};
-
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -68,35 +43,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const fetchInitialSession = async () => {
       try {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
-        if (error) {
+        if (error && isMounted) {
           console.error("Error fetching initial session:", error);
-          if (isMounted) {
-            const guestUser = createMockGuestUser();
-            setUser(guestUser);
-            setRole(getMockRole(guestUser.email));
-            setInitialLoading(false);
-          }
+          // No guest user fallback here
+          setInitialLoading(false);
           return;
         }
         if (isMounted) {
           setSession(currentSession);
           const currentUser = currentSession?.user ?? null;
-          if (currentUser) {
-            setUser(currentUser);
-            setRole(getMockRole(currentUser.email));
-          } else {
-            const guestUser = createMockGuestUser();
-            setUser(guestUser);
-            setRole(getMockRole(guestUser.email));
-          }
+          setUser(currentUser);
+          setRole(currentUser ? getMockRole(currentUser.email) : null);
           setInitialLoading(false);
         }
       } catch (e) {
         console.error("Exception during initial session fetch:", e);
         if (isMounted) {
-            const guestUser = createMockGuestUser();
-            setUser(guestUser);
-            setRole(getMockRole(guestUser.email));
             setInitialLoading(false);
         }
       }
@@ -109,20 +71,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (isMounted) {
           setSession(currentSession);
           const currentUser = currentSession?.user ?? null;
-          if (currentUser) {
-            setUser(currentUser);
-            setRole(getMockRole(currentUser.email));
-          } else {
-            const guestUser = createMockGuestUser();
-            setUser(guestUser);
-            setRole(getMockRole(guestUser.email));
-          }
-          // Only set initialLoading to false if it was still true
-          // This prevents resetting loading state on subsequent auth changes
-          if (initialLoading && _event !== 'INITIAL_SESSION') { 
+          setUser(currentUser);
+          setRole(currentUser ? getMockRole(currentUser.email) : null);
+          
+          // Ensure loading is set to false after the first auth event if it wasn't already
+          if (initialLoading) { 
             setInitialLoading(false);
-          } else if (_event === 'INITIAL_SESSION' && initialLoading) {
-             setInitialLoading(false); // Also handle initial session event
           }
         }
       }
@@ -132,12 +86,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, []); // Corrected: Empty dependency array to run once on mount for setup
+  }, []); // Empty dependency array to run once on mount for setup
 
   const login = useCallback(async (email: string, pass: string): Promise<SupabaseUser | null> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
+      // onAuthStateChange will handle setting user and role
       return data.user;
     } catch (error: any) {
       console.error("Supabase login error:", error);
@@ -156,8 +111,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else if (data.user && data.session) {
          toast({ title: "Signup Successful!", description: "Welcome to MediSync." });
       }
+      // onAuthStateChange will handle setting user and role if signup includes session
       return data.user;
-    } catch (error: any) { // Catch error as 'any' or specific Supabase error type if known
+    } catch (error: any) { 
       console.error("Supabase signup error:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
       return null;
@@ -169,7 +125,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // onAuthStateChange handles setting user to guest and role
+      // onAuthStateChange will set user, session, and role to null
+      // No need to set guest user here
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error: any) {
       console.error("Supabase logout error:", error);
       toast({ title: "Logout Error", description: error.message || "Failed to logout.", variant: "destructive" });
@@ -185,6 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
       if (error) throw error;
+      // Supabase handles redirect and onAuthStateChange will update state
     } catch (error: any) {
       console.error("Supabase Google sign-in error:", error.message);
       toast({ title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
@@ -192,11 +151,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
   
   const assignRole = useCallback((newRole: UserRole) => {
-    setRole(newRole);
-     if (user && user.id === 'guest-preview-user') {
-      console.warn("Assigning role to guest user. This is for UI demo only.");
+    // This function might be less relevant if roles are purely derived from email
+    // or managed differently in a real backend scenario.
+    // For now, it directly sets the role if needed for UI logic that isn't RLS-driven.
+    if (user) { // Only assign role if there is a user
+        setRole(newRole);
     }
-  }, [user]); // Added user to dependency array as it's used
+  }, [user]); 
 
   const sendPasswordReset = useCallback(async (email: string) => {
     try {
@@ -238,5 +199,4 @@ export const useAuth = () => {
   }
   return context;
 };
-
     

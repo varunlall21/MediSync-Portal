@@ -31,15 +31,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!loading && !user) {
+      // If auth is resolved and there's no user, redirect to login
       router.replace('/login');
     }
-    // If user is logged in but role is not yet determined (or null),
-    // and they are not on a generic app page, redirect them.
-    // This depends on how roles are fetched. For now, if role is null, we wait.
-    // Or redirect to a "role pending" page or back to login if role is critical.
+    // If user exists but role is somehow null (after loading),
+    // they will see the loading spinner below until role is determined.
+    // Or, if they are on a page that doesn't match their role, they might get stuck
+    // on the spinner if the target dashboard isn't accessible due to navConfig.
+    // This part might need refinement based on how roles are fully managed.
   }, [user, loading, router]);
 
-  if (loading || !role) { // Wait for role to be determined
+  if (loading || (user && !role)) { 
+    // Show loading if:
+    // 1. Auth context is still loading initial state.
+    // 2. User object exists, but role is not yet determined (e.g., getMockRole hasn't run or returned null).
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background text-foreground">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -48,7 +53,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (!user) { // Should be caught by useEffect, but as a safeguard
+  if (!user) { 
+    // This case should ideally be handled by the useEffect redirecting to /login.
+    // However, as a safeguard or if the redirect hasn't happened yet,
+    // return null to prevent rendering the app layout for an unauthenticated user.
     return null;
   }
   

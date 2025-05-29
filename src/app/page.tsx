@@ -15,8 +15,8 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!loading) {
-      if (user && role) { // If user is logged in and role is determined
-        let targetDashboard = '/login'; // Default to login if role is unexpected or null
+      if (user && role) { 
+        let targetDashboard = '/login'; // Default to login if role is unexpected
         switch (role) {
           case 'admin':
             targetDashboard = '/admin/dashboard';
@@ -31,7 +31,6 @@ export default function HomePage() {
         router.replace(targetDashboard);
       }
       // If !user (and !loading), the page will render the Login/Signup options below.
-      // No automatic redirect to /login for unauthenticated users from this useEffect.
     }
   }, [user, role, loading, router]);
 
@@ -67,14 +66,14 @@ export default function HomePage() {
           </Button>
         </div>
         <p className="mt-12 text-sm text-muted-foreground max-w-md">
-          If you are an admin or a doctor, please use the credentials provided to you for login. New patients can sign up.
+          Sign up with an email containing "admin" or "doctor" to access respective roles. Otherwise, you'll be a patient.
         </p>
       </div>
     );
   }
 
-  // Fallback for authenticated users while waiting for useEffect to redirect
-  // This state should be very brief.
+  // Fallback for authenticated users while waiting for useEffect to redirect, or if role is still null.
+  // This state should be very brief if redirection logic is correct.
   return (
     <div className="flex h-screen w-full flex-col items-center justify-center bg-background text-foreground">
       <Logo className="mb-8 text-3xl" />
