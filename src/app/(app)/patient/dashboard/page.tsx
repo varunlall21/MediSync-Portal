@@ -25,19 +25,19 @@ export default function PatientDashboardPage() {
       title: "Understanding Your Lab Results", 
       description: "Learn how to interpret common lab test results and what they mean for your health.",
       icon: FileSpreadsheet,
-      link: "#" 
+      slug: "understanding-lab-results" 
     },
     { 
       title: "Tips for a Healthy Heart", 
       description: "Discover lifestyle changes and dietary advice for better cardiovascular health.",
       icon: HeartPulse,
-      link: "#" 
+      slug: "tips-for-healthy-heart" 
     },
     {
       title: "Managing Stress for Better Wellness",
       description: "Explore techniques for stress reduction and improving your mental well-being.",
       icon: Brain,
-      link: "#"
+      slug: "managing-stress-for-wellness"
     }
   ];
 
@@ -126,7 +126,7 @@ export default function PatientDashboardPage() {
                   <h3 className="font-semibold text-lg text-foreground">{resource.title}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground mt-1 flex-grow">{resource.description}</p>
-                <Link href={resource.link} className="text-sm text-primary hover:underline mt-3 inline-block self-start group">
+                <Link href={`/patient/health-resources/${resource.slug}`} className="text-sm text-primary hover:underline mt-3 inline-block self-start group">
                   Read more <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">&rarr;</span>
                 </Link>
               </div>
@@ -137,3 +137,5 @@ export default function PatientDashboardPage() {
     </div>
   );
 }
+
+    
