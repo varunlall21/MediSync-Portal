@@ -24,7 +24,7 @@ export default function PatientFindDoctorsPage() {
       setFetchError(null);
       try {
         const fetchedDoctors = await getDoctors();
-        setDoctors(fetchedDoctors);
+        setDoctors(fetchedDoctors || []); // Ensure doctors is always an array
       } catch (error: any) {
         console.error("PatientFindDoctorsPage - Failed to fetch doctors:", error.message);
         const detailedError = error.message || "Could not load doctor list. Please check console for more details.";
@@ -42,10 +42,14 @@ export default function PatientFindDoctorsPage() {
     loadDoctors();
   }, [toast]);
 
-  const filteredDoctors = doctors.filter(doctor =>
-    doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    doctor.specialty.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDoctors = doctors.filter(doctor => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    const nameMatch = doctor.name && typeof doctor.name === 'string' && 
+                      doctor.name.toLowerCase().includes(lowerSearchTerm);
+    const specialtyMatch = doctor.specialty && typeof doctor.specialty === 'string' && 
+                           doctor.specialty.toLowerCase().includes(lowerSearchTerm);
+    return nameMatch || specialtyMatch;
+  });
 
   if (isLoading) {
     return (
@@ -100,7 +104,7 @@ export default function PatientFindDoctorsPage() {
         </Card>
       )}
 
-      {!fetchError && doctors.length === 0 && (
+      {!fetchError && doctors.length === 0 && !isLoading && ( // Added !isLoading check
          <div className="mt-8 p-10 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
             <Stethoscope className="mx-auto h-12 w-12 mb-4 text-primary/50" />
             <h3 className="text-xl font-semibold mb-2">No Doctors Available</h3>
@@ -109,7 +113,7 @@ export default function PatientFindDoctorsPage() {
         </div>
        )}
 
-      {!fetchError && doctors.length > 0 && filteredDoctors.length === 0 && (
+      {!fetchError && doctors.length > 0 && filteredDoctors.length === 0 && !isLoading && ( // Added !isLoading check
          <div className="mt-8 p-10 border-2 border-dashed border-border rounded-lg text-center text-muted-foreground">
             <Search className="mx-auto h-12 w-12 mb-4 text-primary/50" />
             <h3 className="text-xl font-semibold mb-2">No Doctors Found</h3>
@@ -122,8 +126,8 @@ export default function PatientFindDoctorsPage() {
           <Card key={doctor.id} className="shadow-xl hover:shadow-2xl dark:hover:shadow-primary/20 transition-all duration-300 overflow-hidden group">
             <CardHeader className="p-0 relative">
                <Image 
-                src={doctor.image_url || `https://placehold.co/400x300.png?text=${doctor.name.charAt(0)}`} 
-                alt={doctor.name} 
+                src={doctor.image_url || `https://placehold.co/400x300.png?text=${doctor.name ? doctor.name.charAt(0) : 'D'}`} 
+                alt={doctor.name || 'Doctor'} 
                 width={400} 
                 height={300} 
                 className="w-full h-56 object-cover group-hover:scale-105 transition-transform duration-300 rounded-t-lg" 
@@ -132,9 +136,9 @@ export default function PatientFindDoctorsPage() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent rounded-t-lg"></div>
               <div className="absolute bottom-0 left-0 p-4">
                 <CardTitle className="text-xl text-primary-foreground flex items-center mb-1">
-                  {doctor.name}
+                  {doctor.name || 'N/A'}
                 </CardTitle>
-                <CardDescription className="text-base text-accent-foreground/80">{doctor.specialty}</CardDescription>
+                <CardDescription className="text-base text-accent-foreground/80">{doctor.specialty || 'N/A'}</CardDescription>
               </div>
             </CardHeader>
             <CardContent className="p-4">
@@ -150,6 +154,3 @@ export default function PatientFindDoctorsPage() {
     </div>
   );
 }
-
-
-    
