@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,31 +9,51 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
-import { UserPlus, CalendarCheck, Clock, FileText } from "lucide-react";
+import { UserPlus, CalendarCheck, Clock, FileText, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { addAppointmentEntry, mockDoctorsList, type DoctorInfo } from '@/lib/appointment-service';
+import { addAppointmentEntry, getDoctors, type DoctorInfo, type NewAppointmentData } from '@/lib/appointment-service';
 import { useAuth } from '@/contexts/auth-context';
 
 const availableTimeSlots = ["09:00 AM", "10:00 AM", "11:00 AM", "02:00 PM", "03:00 PM", "04:00 PM"];
 
 export default function BookAppointmentPage() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+
+  const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
+  const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
+  
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | undefined>();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedTime, setSelectedTime] = useState<string | undefined>();
   const [reason, setReason] = useState("");
-  const { toast } = useToast();
-  const searchParams = useSearchParams();
+  const [isBooking, setIsBooking] = useState(false);
 
   useEffect(() => {
-    const doctorIdFromQuery = searchParams.get('doctorId');
-    if (doctorIdFromQuery && mockDoctorsList.find(doc => doc.id === doctorIdFromQuery)) {
-      setSelectedDoctorId(doctorIdFromQuery);
-    }
-  }, [searchParams]);
+    const loadDoctors = async () => {
+      setIsLoadingDoctors(true);
+      try {
+        const fetchedDoctors = await getDoctors();
+        setDoctors(fetchedDoctors);
+        
+        // Pre-select doctor if doctorId is in query params
+        const doctorIdFromQuery = searchParams.get('doctorId');
+        if (doctorIdFromQuery && fetchedDoctors.find(doc => doc.id === doctorIdFromQuery)) {
+          setSelectedDoctorId(doctorIdFromQuery);
+        }
+      } catch (error) {
+        console.error("Failed to fetch doctors:", error);
+        toast({ title: "Error", description: "Could not load doctor list. Please try again.", variant: "destructive" });
+      } finally {
+        setIsLoadingDoctors(false);
+      }
+    };
+    loadDoctors();
+  }, [searchParams, toast]);
 
-  const resetForm = () => {
-    // Do not reset doctor if it came from query param initially
+
+  const resetForm = useCallback(() => {
     const doctorIdFromQuery = searchParams.get('doctorId');
     if (!doctorIdFromQuery) {
         setSelectedDoctorId(undefined);
@@ -41,46 +61,55 @@ export default function BookAppointmentPage() {
     setSelectedDate(new Date());
     setSelectedTime(undefined);
     setReason("");
-  };
+  },[searchParams]);
 
-  const handleBooking = () => {
+  const handleBooking = async () => {
+    if (!user) {
+      toast({ title: "Authentication Error", description: "You must be logged in to book an appointment.", variant: "destructive" });
+      return;
+    }
     if (!selectedDoctorId || !selectedDate || !selectedTime) {
-      toast({
-        title: "Missing Information",
-        description: "Please select a doctor, date, and time slot.",
-        variant: "destructive",
-      });
+      toast({ title: "Missing Information", description: "Please select a doctor, date, and time slot.", variant: "destructive" });
       return;
     }
 
-    const doctorDetails = mockDoctorsList.find(doc => doc.id === selectedDoctorId);
-    if (!doctorDetails) {
-      toast({
-        title: "Error",
-        description: "Selected doctor not found.",
-        variant: "destructive",
-      });
+    const selectedDoctor = doctors.find(doc => doc.id === selectedDoctorId);
+    if (!selectedDoctor) {
+      toast({ title: "Error", description: "Selected doctor not found.", variant: "destructive" });
       return;
     }
 
-    const patientName = user?.displayName || user?.email?.split('@')[0] || "Guest Patient";
+    setIsBooking(true);
+    const patientName = user.user_metadata?.full_name || user.email?.split('@')[0] || "Guest Patient";
 
-    addAppointmentEntry({
-      patientName,
-      doctorId: doctorDetails.id,
-      doctorName: doctorDetails.name,
-      specialty: doctorDetails.specialty,
+    const appointmentData: NewAppointmentData = {
+      patient_name: patientName,
+      patient_user_id: user.id,
+      doctor_id: selectedDoctor.id,
+      doctor_name: selectedDoctor.name,
+      specialty: selectedDoctor.specialty,
       date: selectedDate.toISOString().split('T')[0], // YYYY-MM-DD
       time: selectedTime,
       reason: reason || undefined,
-    });
+    };
 
-    toast({
-      title: "Appointment Request Sent!",
-      description: `Your appointment with ${doctorDetails.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime} is pending confirmation.`,
-    });
-    
-    resetForm();
+    try {
+      const newAppointment = await addAppointmentEntry(appointmentData);
+      if (newAppointment) {
+        toast({
+          title: "Appointment Request Sent!",
+          description: `Your appointment with ${selectedDoctor.name} on ${selectedDate.toLocaleDateString()} at ${selectedTime} is pending confirmation.`,
+        });
+        resetForm();
+      } else {
+        throw new Error("Failed to save appointment.");
+      }
+    } catch (error) {
+      console.error("Booking error:", error);
+      toast({ title: "Booking Failed", description: "Could not send appointment request. Please try again.", variant: "destructive" });
+    } finally {
+      setIsBooking(false);
+    }
   };
 
   return (
@@ -94,14 +123,20 @@ export default function BookAppointmentPage() {
         <CardContent className="space-y-6">
           <div>
             <Label htmlFor="doctor" className="flex items-center mb-1"><UserPlus className="mr-2 h-4 w-4 text-muted-foreground"/> Select Doctor</Label>
-            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId}>
+            <Select value={selectedDoctorId} onValueChange={setSelectedDoctorId} disabled={isLoadingDoctors}>
               <SelectTrigger id="doctor">
-                <SelectValue placeholder="Choose a doctor" />
+                <SelectValue placeholder={isLoadingDoctors ? "Loading doctors..." : "Choose a doctor"} />
               </SelectTrigger>
               <SelectContent>
-                {mockDoctorsList.map((doc: DoctorInfo) => (
-                  <SelectItem key={doc.id} value={doc.id}>{doc.name} ({doc.specialty})</SelectItem>
-                ))}
+                {isLoadingDoctors ? (
+                  <SelectItem value="loading" disabled>Loading...</SelectItem>
+                ) : doctors.length > 0 ? (
+                  doctors.map((doc: DoctorInfo) => (
+                    <SelectItem key={doc.id} value={doc.id}>{doc.name} ({doc.specialty})</SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-doctors" disabled>No doctors available.</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -146,8 +181,9 @@ export default function BookAppointmentPage() {
             />
           </div>
 
-          <Button onClick={handleBooking} className="w-full text-lg py-6" disabled={!selectedDoctorId || !selectedDate || !selectedTime}>
-            <CalendarCheck className="mr-2 h-5 w-5" /> Book Appointment
+          <Button onClick={handleBooking} className="w-full text-lg py-6" disabled={!selectedDoctorId || !selectedDate || !selectedTime || isBooking || isLoadingDoctors}>
+            {isBooking ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <CalendarCheck className="mr-2 h-5 w-5" />}
+            {isBooking ? "Booking..." : "Book Appointment"}
           </Button>
         </CardContent>
       </Card>

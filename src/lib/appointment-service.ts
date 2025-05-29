@@ -1,88 +1,158 @@
 
-'use client'; // Since it uses localStorage
+'use client';
 
-export interface Appointment {
-  id: string;
-  patientName: string; 
-  doctorId: string;
-  doctorName: string;
+import { supabase } from './supabaseClient';
+
+// Corresponds to the 'doctors' table in Supabase
+export interface DoctorInfo {
+  id: string; // uuid from Supabase
+  name: string;
   specialty: string;
-  date: string; // Store as YYYY-MM-DD
-  time: string;
-  reason?: string;
-  status: "Pending" | "Approved" | "Cancelled" | "Completed";
-  bookedAt: string; // ISO string for when it was booked
+  created_at: string; // Supabase timestamp
+  image_url?: string | null;
 }
 
-const APPOINTMENTS_STORAGE_KEY = 'mediSyncAppointments';
+// Corresponds to the 'appointments' table in Supabase
+export interface Appointment {
+  id: string; // uuid from Supabase
+  patient_name: string;
+  patient_user_id: string | null; // User's auth ID
+  doctor_id: string; // uuid, foreign key to doctors.id
+  doctor_name: string; // Denormalized for easy display
+  specialty: string; // Denormalized for easy display
+  date: string; // YYYY-MM-DD
+  time: string;
+  reason?: string | null;
+  status: "Pending" | "Approved" | "Cancelled" | "Completed";
+  booked_at: string; // Supabase timestamp
+}
 
-export const getAppointments = (): Appointment[] => {
-  if (typeof window === 'undefined') return [];
+export interface NewAppointmentData {
+  patient_name: string;
+  patient_user_id: string | null;
+  doctor_id: string;
+  doctor_name: string; // Pass this from selected doctor
+  specialty: string;   // Pass this from selected doctor
+  date: string; // YYYY-MM-DD
+  time: string;
+  reason?: string;
+}
+
+export interface NewDoctorData {
+    name: string;
+    specialty: string;
+    image_url?: string | null;
+}
+
+
+const DOCTORS_TABLE = 'doctors';
+const APPOINTMENTS_TABLE = 'appointments';
+
+// --- Doctor Service Functions ---
+
+export const getDoctors = async (): Promise<DoctorInfo[]> => {
   try {
-    const storedAppointments = localStorage.getItem(APPOINTMENTS_STORAGE_KEY);
-    return storedAppointments ? JSON.parse(storedAppointments) : [];
+    const { data, error } = await supabase
+      .from(DOCTORS_TABLE)
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching doctors:', error);
+      throw error;
+    }
+    return data || [];
   } catch (error) {
-    console.error("Error reading appointments from localStorage:", error);
+    console.error('Supabase getDoctors error:', error);
     return [];
   }
 };
 
-export const saveAppointments = (appointments: Appointment[]): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify(appointments));
-  } catch (error)
-    {
-    console.error("Error saving appointments to localStorage:", error);
-  }
-};
+export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorInfo | null> => {
+    try {
+        const { data, error } = await supabase
+            .from(DOCTORS_TABLE)
+            .insert([
+                { ...doctorData }
+            ])
+            .select()
+            .single(); // Assuming you want the newly created doctor back
 
-export const addAppointmentEntry = (newAppointmentData: {
-  patientName: string;
-  doctorId: string;
-  doctorName: string;
-  specialty: string;
-  date: string; // YYYY-MM-DD
-  time: string;
-  reason?: string;
-}): Appointment => {
-  const appointments = getAppointments();
-  const appointmentWithMeta: Appointment = {
-    ...newAppointmentData,
-    id: `appt_${new Date().getTime()}_${Math.random().toString(36).substring(2, 7)}`,
-    status: 'Pending',
-    bookedAt: new Date().toISOString(),
-  };
-  const updatedAppointments = [...appointments, appointmentWithMeta];
-  saveAppointments(updatedAppointments);
-  return appointmentWithMeta;
-};
-
-export const updateAppointmentStatusEntry = (appointmentId: string, newStatus: Appointment['status']): Appointment | undefined => {
-  let appointments = getAppointments();
-  let updatedAppointment: Appointment | undefined;
-  appointments = appointments.map(appt => {
-    if (appt.id === appointmentId) {
-      updatedAppointment = { ...appt, status: newStatus };
-      return updatedAppointment;
+        if (error) {
+            console.error('Error adding doctor:', error);
+            throw error;
+        }
+        return data;
+    } catch (error) {
+        console.error('Supabase addDoctor error:', error);
+        return null;
     }
-    return appt;
-  });
-  if (updatedAppointment) {
-    saveAppointments(appointments);
-  }
-  return updatedAppointment;
 };
 
-export interface DoctorInfo {
-    id: string;
-    name: string;
-    specialty: string;
-}
 
-export const mockDoctorsList: DoctorInfo[] = [
-  { id: "d1", name: "Dr. Emily Carter", specialty: "Cardiology" },
-  { id: "d2", name: "Dr. Johnathan Lee", specialty: "Pediatrics" },
-  { id: "d3", name: "Dr. Sarah Miller", specialty: "Dermatology" },
-  { id: "d4", name: "Dr. David Wilson", specialty: "Neurology" },
-];
+// --- Appointment Service Functions ---
+
+export const getAppointments = async (): Promise<Appointment[]> => {
+  try {
+    const { data, error } = await supabase
+      .from(APPOINTMENTS_TABLE)
+      .select('*')
+      .order('booked_at', { ascending: false }); // Or by date/time as needed
+
+    if (error) {
+      console.error('Error fetching appointments:', error);
+      throw error;
+    }
+    return data || [];
+  } catch (error) {
+    console.error('Supabase getAppointments error:', error);
+    return [];
+  }
+};
+
+export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData): Promise<Appointment | null> => {
+  try {
+    // 'id' and 'booked_at' will be handled by Supabase defaults or triggers
+    // 'status' will be 'Pending' by default for new appointments
+    const appointmentToInsert = {
+      ...newAppointmentData,
+      status: 'Pending' as Appointment['status'],
+      // booked_at is set by Supabase default now()
+    };
+
+    const { data, error } = await supabase
+      .from(APPOINTMENTS_TABLE)
+      .insert([appointmentToInsert])
+      .select()
+      .single(); // Return the newly created appointment
+
+    if (error) {
+      console.error('Error adding appointment:', error);
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('Supabase addAppointmentEntry error:', error);
+    return null;
+  }
+};
+
+export const updateAppointmentStatusEntry = async (appointmentId: string, newStatus: Appointment['status']): Promise<Appointment | null> => {
+  try {
+    const { data, error } = await supabase
+      .from(APPOINTMENTS_TABLE)
+      .update({ status: newStatus })
+      .eq('id', appointmentId)
+      .select()
+      .single(); // Return the updated appointment
+
+    if (error) {
+      console.error('Error updating appointment status:', error);
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('Supabase updateAppointmentStatusEntry error:', error);
+    return null;
+  }
+};

@@ -4,47 +4,79 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Clock, CalendarDays } from "lucide-react";
+import { CheckCircle, XCircle, Clock, CalendarDays, Loader2 } from "lucide-react";
 import { getAppointments, updateAppointmentStatusEntry, type Appointment } from '@/lib/appointment-service';
 import { useToast } from '@/hooks/use-toast';
-// import { useAuth } from '@/contexts/auth-context'; // If doctors are assigned specific patients or need their ID
+import { useAuth } from '@/contexts/auth-context';
 
 export default function DoctorManageAppointmentsPage() {
   const [appointmentRequests, setAppointmentRequests] = useState<Appointment[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  // const { user } = useAuth(); // Potentially use to filter appointments for this specific doctor
+  const { user, loading: authLoading, role } = useAuth();
 
-  const fetchAppointmentRequests = useCallback(() => {
-    const allAppointments = getAppointments();
-    // For now, doctor sees all pending requests. 
-    // In a real app, filter by doctorId if user is a doctor.
-    // const doctorId = user?.uid; // Example: if doctor's Firebase UID is their ID
-    // const pending = allAppointments.filter(appt => appt.status === "Pending" && appt.doctorId === doctorId);
-    const pending = allAppointments.filter(appt => appt.status === "Pending")
-                                 .sort((a,b) => new Date(a.bookedAt).getTime() - new Date(b.bookedAt).getTime()); // Show oldest first
-    setAppointmentRequests(pending);
-  }, []);
+  const fetchAppointmentRequests = useCallback(async () => {
+    if (!user || role !== 'doctor') {
+        setAppointmentRequests([]);
+        setIsLoading(false);
+        return;
+    }
+    setIsLoading(true);
+    try {
+      const allAppointments = await getAppointments();
+      // Doctor sees all pending requests for now. 
+      // TODO: Filter by doctorId if appointments are assigned to specific doctors.
+      // const doctorId = user?.id; 
+      // const pending = allAppointments.filter(appt => appt.status === "Pending" && appt.doctor_id === doctorId);
+      const pending = allAppointments
+        .filter(appt => appt.status === "Pending")
+        .sort((a,b) => new Date(a.booked_at).getTime() - new Date(b.booked_at).getTime());
+      setAppointmentRequests(pending);
+    } catch (error) {
+      console.error("Failed to fetch appointments:", error);
+      toast({ title: "Error", description: "Could not load appointment requests.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user, role, toast]);
 
   useEffect(() => {
-    fetchAppointmentRequests();
-  }, [fetchAppointmentRequests]);
+    if (!authLoading) {
+        fetchAppointmentRequests();
+    }
+  }, [authLoading, fetchAppointmentRequests]);
 
-  const handleUpdateStatus = (appointmentId: string, newStatus: "Approved" | "Cancelled") => {
-    const updatedAppointment = updateAppointmentStatusEntry(appointmentId, newStatus);
-    if (updatedAppointment) {
-      toast({
-        title: `Appointment ${newStatus}`,
-        description: `The appointment for ${updatedAppointment.patientName} has been ${newStatus.toLowerCase()}.`,
-      });
-      fetchAppointmentRequests(); // Refresh list
-    } else {
-      toast({
-        title: "Error",
-        description: "Could not update appointment status. Please try again.",
-        variant: "destructive",
-      });
+  const handleUpdateStatus = async (appointmentId: string, newStatus: "Approved" | "Cancelled") => {
+    const originalAppointments = [...appointmentRequests];
+    // Optimistic update
+    setAppointmentRequests(prev => prev.filter(appt => appt.id !== appointmentId));
+
+    try {
+      const updatedAppointment = await updateAppointmentStatusEntry(appointmentId, newStatus);
+      if (updatedAppointment) {
+        toast({
+          title: `Appointment ${newStatus}`,
+          description: `The appointment for ${updatedAppointment.patient_name} has been ${newStatus.toLowerCase()}.`,
+        });
+        // fetchAppointmentRequests(); // Re-fetch to update list, or rely on optimistic update
+      } else {
+        throw new Error("Failed to update appointment on server.");
+      }
+    } catch (error) {
+      console.error("Update appointment status error:", error);
+      toast({ title: "Error", description: "Could not update appointment status. Please try again.", variant: "destructive" });
+      setAppointmentRequests(originalAppointments); // Revert optimistic update
     }
   };
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Loading appointment requests...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -60,8 +92,8 @@ export default function DoctorManageAppointmentsPage() {
               {appointmentRequests.map(req => (
                 <li key={req.id} className="p-4 border rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center hover:bg-muted/50 transition-colors">
                   <div>
-                    <p className="font-semibold text-foreground">Patient: {req.patientName}</p>
-                    <p className="text-sm text-muted-foreground">Doctor: {req.doctorName} ({req.specialty})</p>
+                    <p className="font-semibold text-foreground">Patient: {req.patient_name}</p>
+                    <p className="text-sm text-muted-foreground">Doctor: {req.doctor_name} ({req.specialty})</p>
                     <div className="flex items-center text-sm text-muted-foreground mt-1">
                         <CalendarDays className="mr-1.5 h-4 w-4" /> {new Date(req.date).toLocaleDateString()}
                         <Clock className="ml-3 mr-1.5 h-4 w-4" /> {req.time}

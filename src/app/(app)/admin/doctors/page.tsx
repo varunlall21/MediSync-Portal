@@ -1,49 +1,81 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Stethoscope, UserPlus } from "lucide-react";
+import { Stethoscope, UserPlus, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-
-interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-}
-
-// Mock existing doctors - you might fetch this from a DB
-const mockExistingDoctors: Doctor[] = [
-  { id: "doc1", name: "Dr. Alice Wonderland", specialty: "Cardiology" },
-  { id: "doc2", name: "Dr. Bob The Builder", specialty: "Pediatrics" },
-];
+import { getDoctors, addDoctorEntry, type DoctorInfo, type NewDoctorData } from '@/lib/appointment-service';
+import { useToast } from '@/hooks/use-toast';
 
 export default function ManageDoctorsPage() {
-  const [doctors, setDoctors] = useState<Doctor[]>(mockExistingDoctors);
+  const [doctors, setDoctors] = useState<DoctorInfo[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isAddDoctorDialogOpen, setIsAddDoctorDialogOpen] = useState(false);
   const [newDoctorName, setNewDoctorName] = useState("");
   const [newDoctorSpecialty, setNewDoctorSpecialty] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const handleAddDoctor = () => {
+  const fetchDoctors = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const fetchedDoctors = await getDoctors();
+      setDoctors(fetchedDoctors);
+    } catch (error) {
+      console.error("Failed to fetch doctors:", error);
+      toast({ title: "Error", description: "Could not load doctor list.", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchDoctors();
+  }, [fetchDoctors]);
+
+  const handleAddDoctor = async () => {
     if (!newDoctorName || !newDoctorSpecialty) {
-      // Basic validation, can be enhanced with toasts or form validation library
-      alert("Please enter both name and specialty.");
+      toast({ title: "Validation Error", description: "Please enter both name and specialty.", variant: "destructive"});
       return;
     }
-    const newDoctor: Doctor = {
-      id: `doc${doctors.length + 1}`, // Simple ID generation
+    setIsSubmitting(true);
+    const newDoctorData: NewDoctorData = {
       name: newDoctorName,
       specialty: newDoctorSpecialty,
     };
-    setDoctors([...doctors, newDoctor]);
-    setNewDoctorName("");
-    setNewDoctorSpecialty("");
-    setIsAddDoctorDialogOpen(false);
-    // In a real app, call API to create doctor
+
+    try {
+      const addedDoctor = await addDoctorEntry(newDoctorData);
+      if (addedDoctor) {
+        // setDoctors(prevDoctors => [...prevDoctors, addedDoctor]); // Add to local state
+        await fetchDoctors(); // Or re-fetch the list
+        toast({ title: "Doctor Added", description: `${addedDoctor.name} has been added successfully.` });
+        setNewDoctorName("");
+        setNewDoctorSpecialty("");
+        setIsAddDoctorDialogOpen(false);
+      } else {
+        throw new Error("Failed to add doctor to database.");
+      }
+    } catch (error) {
+      console.error("Add doctor error:", error);
+      toast({ title: "Error Adding Doctor", description: "Could not add new doctor. Please try again.", variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+  
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-2">Loading doctors...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -73,6 +105,7 @@ export default function ManageDoctorsPage() {
                   onChange={(e) => setNewDoctorName(e.target.value)} 
                   className="col-span-3" 
                   placeholder="e.g., Dr. Jane Doe" 
+                  disabled={isSubmitting}
                 />
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
@@ -85,12 +118,16 @@ export default function ManageDoctorsPage() {
                   onChange={(e) => setNewDoctorSpecialty(e.target.value)} 
                   className="col-span-3" 
                   placeholder="e.g., Cardiology" 
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDoctorDialogOpen(false)}>Cancel</Button>
-              <Button type="submit" onClick={handleAddDoctor}>Add Doctor</Button>
+              <Button variant="outline" onClick={() => setIsAddDoctorDialogOpen(false)} disabled={isSubmitting}>Cancel</Button>
+              <Button type="submit" onClick={handleAddDoctor} disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Doctor
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
