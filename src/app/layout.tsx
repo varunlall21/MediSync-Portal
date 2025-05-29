@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          <div key="medisync-app-root-wrapper"> {/* Explicitly keyed div as single child for AuthProvider */}
+          <div> {/* Removed key="medisync-app-root-wrapper" */}
             {children}
             <Toaster />
           </div>
