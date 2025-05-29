@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig } from "lucide-react";
+import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig, HeartPulse, Brain, FileSpreadsheet } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -18,6 +18,27 @@ export default function PatientDashboardPage() {
     { title: "View My Appointments", href: "/patient/appointments", icon: CalendarDays },
     { title: "Access Medical History", href: "/patient/medical-history", icon: ClipboardList },
     { title: "Find a Doctor", href: "/patient/doctors", icon: Stethoscope },
+  ];
+
+  const healthResources = [
+    { 
+      title: "Understanding Your Lab Results", 
+      description: "Learn how to interpret common lab test results and what they mean for your health.",
+      icon: FileSpreadsheet,
+      link: "#" 
+    },
+    { 
+      title: "Tips for a Healthy Heart", 
+      description: "Discover lifestyle changes and dietary advice for better cardiovascular health.",
+      icon: HeartPulse,
+      link: "#" 
+    },
+    {
+      title: "Managing Stress for Better Wellness",
+      description: "Explore techniques for stress reduction and improving your mental well-being.",
+      icon: Brain,
+      link: "#"
+    }
   ];
 
   return (
@@ -97,17 +118,19 @@ export default function PatientDashboardPage() {
           <CardDescription>Find useful health information and tips.</CardDescription>
         </CardHeader>
         <CardContent>
-           <div className="grid md:grid-cols-2 gap-4">
-            <div className="p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors duration-300 hover:border-accent/50 hover:shadow-md">
-                <h3 className="font-semibold text-foreground">Understanding Your Lab Results</h3>
-                <p className="text-sm text-muted-foreground mt-1">Learn how to interpret common lab test results.</p>
-                <Link href="#" className="text-sm text-primary hover:underline mt-2 inline-block">Read more &rarr;</Link>
-            </div>
-             <div className="p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors duration-300 hover:border-accent/50 hover:shadow-md">
-                <h3 className="font-semibold text-foreground">Tips for a Healthy Heart</h3>
-                <p className="text-sm text-muted-foreground mt-1">Discover lifestyle changes for better cardiovascular health.</p>
-                <Link href="#" className="text-sm text-primary hover:underline mt-2 inline-block">Read more &rarr;</Link>
-            </div>
+           <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4">
+            {healthResources.map((resource, index) => (
+              <div key={index} className="p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-all duration-300 hover:border-accent/50 hover:shadow-md flex flex-col">
+                <div className="flex items-center mb-2">
+                  <resource.icon className="h-6 w-6 mr-3 text-primary flex-shrink-0" />
+                  <h3 className="font-semibold text-lg text-foreground">{resource.title}</h3>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1 flex-grow">{resource.description}</p>
+                <Link href={resource.link} className="text-sm text-primary hover:underline mt-3 inline-block self-start group">
+                  Read more <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">&rarr;</span>
+                </Link>
+              </div>
+            ))}
            </div>
         </CardContent>
       </Card>
