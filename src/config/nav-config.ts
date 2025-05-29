@@ -19,15 +19,14 @@ export const navConfig: Record<string, NavItem[]> = {
     { title: 'Manage Doctors', href: '/admin/doctors', icon: Stethoscope },
     { title: 'Appointments', href: '/admin/appointments', icon: CalendarDays },
     { title: 'Medical Records', href: '/admin/medical-history', icon: ClipboardList },
-    { title: 'System Settings', href: '/admin/settings', icon: Settings, disabled: true }, // Example disabled
+    { title: 'System Settings', href: '/settings', icon: Settings },
   ],
   doctor: [
     { title: 'Dashboard', href: '/doctor/dashboard', icon: LayoutDashboard },
     { title: 'My Schedule', href: '/doctor/schedule', icon: CalendarDays },
     { title: 'My Patients', href: '/doctor/patients', icon: Users },
     { title: 'Appointment Requests', href: '/doctor/appointments', icon: ShieldAlert },
-    // Medical history accessed via patient list
-    { title: 'Profile Settings', href: '/doctor/settings', icon: Settings, disabled: true },
+    { title: 'Profile Settings', href: '/settings', icon: Settings },
   ],
   patient: [
     { title: 'Dashboard', href: '/patient/dashboard', icon: LayoutDashboard },
@@ -35,6 +34,6 @@ export const navConfig: Record<string, NavItem[]> = {
     { title: 'Book Appointment', href: '/patient/book-appointment', icon: UserPlus },
     { title: 'My Appointments', href: '/patient/appointments', icon: CalendarDays },
     { title: 'My Medical History', href: '/patient/medical-history', icon: BookHeart },
-    { title: 'Profile Settings', href: '/patient/settings', icon: Settings, disabled: true },
+    { title: 'Profile Settings', href: '/settings', icon: Settings },
   ],
 };
