@@ -1,12 +1,11 @@
 
 "use client"; // Required for useEffect
 
-// import type { Metadata } from 'next'; // Removed as metadata object is removed
+import React, { useEffect } from 'react'; // Ensure React is imported for React.Fragment
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/auth-context';
 import { Toaster } from "@/components/ui/toaster";
-import { useEffect } from 'react'; 
 
 const inter = Inter({
   variable: '--font-sans',
@@ -30,14 +29,13 @@ export default function RootLayout({
   }, []);
 
   return (
-    // Removed hardcoded className="dark". suppressHydrationWarning is helpful for theme toggling.
     <html lang="en" suppressHydrationWarning> 
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
-          <> {/* Wrap children of AuthProvider in a Fragment */}
+          <React.Fragment key="medisync-app-root-children"> {/* Explicit keyed fragment */}
             {children}
             <Toaster />
-          </>
+          </React.Fragment>
         </AuthProvider>
       </body>
     </html>
