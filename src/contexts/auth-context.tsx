@@ -17,7 +17,7 @@ interface AuthContextType {
   signup: (email: string, pass: string) => Promise<SupabaseUser | null>;
   logout: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
-  assignRole: (newRole: UserRole) => void;
+  assignRole: (newRole: UserRole) => void; // Kept for potential future use if roles are managed differently
   sendPasswordReset: (email: string) => Promise<void>;
 }
 
@@ -51,8 +51,9 @@ const createMockGuestUser = (): SupabaseUser => {
     last_sign_in_at: new Date().toISOString(),
     identities: [],
     updated_at: new Date().toISOString(),
-  } as SupabaseUser;
+  } as SupabaseUser; // Cast to SupabaseUser
 };
+
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
@@ -131,7 +132,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, [initialLoading]); // Keep initialLoading to ensure it runs until resolved
+  }, []); // Corrected: Empty dependency array to run once on mount for setup
 
   const login = useCallback(async (email: string, pass: string): Promise<SupabaseUser | null> => {
     try {
@@ -149,18 +150,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data, error } = await supabase.auth.signUp({ email, password: pass });
       if (error) throw error;
+
       if (data.user && !data.session && data.user.identities && data.user.identities.length > 0 && !data.user.email_confirmed_at) {
          toast({ title: "Signup Almost Complete!", description: "Please check your email to confirm your account." });
       } else if (data.user && data.session) {
          toast({ title: "Signup Successful!", description: "Welcome to MediSync." });
       }
       return data.user;
-    } catch (error: any) {
+    } catch (error: any) { // Catch error as 'any' or specific Supabase error type if known
       console.error("Supabase signup error:", error);
       toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
       return null;
-    }
+    } 
   }, [toast]);
+
 
   const logout = useCallback(async () => {
     try {
@@ -187,13 +190,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       toast({ title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
     }
   }, [toast]);
-
+  
   const assignRole = useCallback((newRole: UserRole) => {
     setRole(newRole);
-    if (user && user.id === 'guest-preview-user') {
+     if (user && user.id === 'guest-preview-user') {
       console.warn("Assigning role to guest user. This is for UI demo only.");
     }
-  }, [user]);
+  }, [user]); // Added user to dependency array as it's used
 
   const sendPasswordReset = useCallback(async (email: string) => {
     try {
@@ -235,3 +238,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+    
