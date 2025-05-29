@@ -38,7 +38,7 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
           <div> {/* This div is the single child of AuthProvider */}
-            <React.Fragment key="page-content-wrapper">{children}</React.Fragment>
+            {children} {/* Children directly rendered */}
             {isClient && <Toaster key="app-toaster" />}
           </div>
         </AuthProvider>
