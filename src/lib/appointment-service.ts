@@ -2,6 +2,7 @@
 'use client';
 
 import { supabase } from './supabaseClient';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Corresponds to the 'doctors' table in Supabase
 export interface DoctorInfo {
@@ -60,22 +61,20 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
     if (error) {
       let errorMessage = `Error fetching doctors from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER ACTION REQUIRED] A 401 error (Invalid API Key) from Supabase means THE VALUE of NEXT_PUBLIC_SUPABASE_ANON_KEY that your application is currently using is INCORRECT for the Supabase project at '${supabaseUrl}'.
-        \n1. Go to your Supabase project dashboard (Project Settings -> API) and CAREFULLY COPY the 'public' anon key.
-        \n2. Ensure this EXACT key is the value for NEXT_PUBLIC_SUPABASE_ANON_KEY in your project's .env.local file. There should be no extra characters or quotes.
-        \n3. CRITICAL: You MUST stop and RESTART your Next.js development server after making any changes to the .env.local file.
-        \n(The application *did* find an anon key to use, but Supabase rejected that specific key. Check the console logs from 'src/lib/supabaseClient.ts' to see a snippet of the key being loaded.)`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key used by the application is INCORRECT for your Supabase project.
+        \n1. The key is currently HARDCODED in 'src/lib/supabaseClient.ts'.
+        \n2. Go to your Supabase project dashboard (Project Settings -> API) and CAREFULLY COPY the 'public' anon key.
+        \n3. Ensure this EXACT key is the value for the 'supabaseAnonKey' variable in 'src/lib/supabaseClient.ts'.
+        \n(For production, this key should be in a .env.local file as NEXT_PUBLIC_SUPABASE_ANON_KEY and the server restarted.)`;
       }
       console.error(errorMessage);
       throw error; // Re-throw the error to be caught by the calling component
     }
     return data || [];
   } catch (caughtError: any) {
-    // This block catches errors from the supabase call itself (network, etc.) OR the re-thrown error from above.
     console.error(
         `Exception in getDoctors service function: ${JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2)}`
     );
-    // Re-throw the error so UI components can handle it (e.g., show a toast)
     throw caughtError;
   }
 };
@@ -93,7 +92,7 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
         if (error) {
             let errorMessage = `Error adding doctor. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
             if (status === 401) {
-              errorMessage += `\n\n[DEVELOPER ACTION REQUIRED] A 401 error (Invalid API Key) from Supabase means THE VALUE of NEXT_PUBLIC_SUPABASE_ANON_KEY that your application is currently using is INCORRECT for the Supabase project at '${supabaseUrl}'. Please follow the steps mentioned in the getDoctors error hint.`;
+              errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key used by the application is INCORRECT. Please follow the steps mentioned in the getDoctors error hint to verify the hardcoded key.`;
             }
             console.error(errorMessage);
             throw error;
@@ -118,7 +117,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     if (error) {
       let errorMessage = `Error fetching appointments from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER ACTION REQUIRED] A 401 error (Invalid API Key) from Supabase means THE VALUE of NEXT_PUBLIC_SUPABASE_ANON_KEY that your application is currently using is INCORRECT for the Supabase project at '${supabaseUrl}'. Please follow the steps mentioned in the getDoctors error hint.`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key used by the application is INCORRECT. Please follow the steps mentioned in the getDoctors error hint to verify the hardcoded key.`;
       }
       console.error(errorMessage);
       throw error;
@@ -148,7 +147,7 @@ export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData
     if (error) {
       let errorMessage = `Error adding appointment. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER ACTION REQUIRED] A 401 error (Invalid API Key) from Supabase means THE VALUE of NEXT_PUBLIC_SUPABASE_ANON_KEY that your application is currently using is INCORRECT for the Supabase project at '${supabaseUrl}'. Please follow the steps mentioned in the getDoctors error hint.`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key used by the application is INCORRECT. Please follow the steps mentioned in the getDoctors error hint to verify the hardcoded key.`;
       }
       console.error(errorMessage);
       throw error;
@@ -174,7 +173,7 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
     if (error) {
       let errorMessage = `Error updating appointment status. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER ACTION REQUIRED] A 401 error (Invalid API Key) from Supabase means THE VALUE of NEXT_PUBLIC_SUPABASE_ANON_KEY that your application is currently using is INCORRECT for the Supabase project at '${supabaseUrl}'. Please follow the steps mentioned in the getDoctors error hint.`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key used by the application is INCORRECT. Please follow the steps mentioned in the getDoctors error hint to verify the hardcoded key.`;
       }
       console.error(errorMessage);
       throw error;
@@ -187,3 +186,4 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
     throw caughtError;
   }
 };
+    
