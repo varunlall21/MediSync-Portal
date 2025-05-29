@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import type { User as SupabaseUser, Session, AuthError } from '@supabase/supabase-js';
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/hooks/use-toast';
@@ -45,7 +45,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         if (error && isMounted) {
           console.error("Error fetching initial session:", error);
-          // No guest user fallback here
           setInitialLoading(false);
           return;
         }
@@ -74,7 +73,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(currentUser);
           setRole(currentUser ? getMockRole(currentUser.email) : null);
           
-          // Ensure loading is set to false after the first auth event if it wasn't already
           if (initialLoading) { 
             setInitialLoading(false);
           }
@@ -86,17 +84,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isMounted = false;
       authListener?.subscription.unsubscribe();
     };
-  }, []); // Empty dependency array to run once on mount for setup
+  }, []); 
 
   const login = useCallback(async (email: string, pass: string): Promise<SupabaseUser | null> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
-      // onAuthStateChange will handle setting user and role
       return data.user;
     } catch (error: any) {
       console.error("Supabase login error:", error);
-      toast({ title: "Login Failed", description: error.message || "Invalid email or password.", variant: "destructive" });
+      let description = error.message || "Invalid email or password.";
+      if (error.message && error.message.toLowerCase().includes("invalid") && error.message.toLowerCase().includes("email")) {
+        description += " Supabase considers this email address invalid. Please try a different email or check your Supabase project's email validation/blocking settings.";
+      }
+      toast({ title: "Login Failed", description, variant: "destructive" });
       return null;
     }
   }, [toast]);
@@ -111,11 +112,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else if (data.user && data.session) {
          toast({ title: "Signup Successful!", description: "Welcome to MediSync." });
       }
-      // onAuthStateChange will handle setting user and role if signup includes session
       return data.user;
     } catch (error: any) { 
       console.error("Supabase signup error:", error);
-      toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
+      let description = error.message || "Could not create account.";
+       if (error.message && error.message.toLowerCase().includes("invalid") && error.message.toLowerCase().includes("email")) {
+        description += " Supabase considers this email address invalid. Please try a different email or check your Supabase project's email validation/blocking settings.";
+      }
+      toast({ title: "Signup Failed", description, variant: "destructive" });
       return null;
     } 
   }, [toast]);
@@ -125,8 +129,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      // onAuthStateChange will set user, session, and role to null
-      // No need to set guest user here
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
     } catch (error: any) {
       console.error("Supabase logout error:", error);
@@ -136,14 +138,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = useCallback(async () => {
     try {
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: {
-          redirectTo: typeof window !== 'undefined' ? window.location.origin + '/auth/callback' : undefined,
-        },
+        options: { redirectTo },
       });
       if (error) throw error;
-      // Supabase handles redirect and onAuthStateChange will update state
     } catch (error: any) {
       console.error("Supabase Google sign-in error:", error.message);
       toast({ title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
@@ -151,19 +151,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [toast]);
   
   const assignRole = useCallback((newRole: UserRole) => {
-    // This function might be less relevant if roles are purely derived from email
-    // or managed differently in a real backend scenario.
-    // For now, it directly sets the role if needed for UI logic that isn't RLS-driven.
-    if (user) { // Only assign role if there is a user
+    if (user) { 
         setRole(newRole);
     }
   }, [user]); 
 
   const sendPasswordReset = useCallback(async (email: string) => {
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: typeof window !== 'undefined' ? window.location.origin + '/update-password' : undefined,
-      });
+      const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}/update-password` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
       toast({ title: "Password Reset Email Sent", description: "If an account exists for this email, a password reset link has been sent." });
     } catch (error: any) {
@@ -199,4 +195,3 @@ export const useAuth = () => {
   }
   return context;
 };
-    
