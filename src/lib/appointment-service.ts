@@ -52,19 +52,25 @@ const APPOINTMENTS_TABLE = 'appointments';
 
 export const getDoctors = async (): Promise<DoctorInfo[]> => {
   try {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from(DOCTORS_TABLE)
       .select('*')
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Error fetching doctors:', error);
-      throw error;
+      console.error(
+        `Error fetching doctors from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
+      );
+      throw error; // Re-throw the error to be caught by the calling component
     }
     return data || [];
-  } catch (error) {
-    console.error('Supabase getDoctors error:', error);
-    return [];
+  } catch (caughtError: any) { 
+    // This block catches errors from the supabase call itself (network, etc.) OR the re-thrown error from above.
+    console.error(
+        `Exception in getDoctors service function: ${JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2)}`
+    );
+    // Re-throw the error so UI components can handle it (e.g., show a toast)
+    throw caughtError;
   }
 };
 
@@ -76,16 +82,16 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
                 { ...doctorData }
             ])
             .select()
-            .single(); // Assuming you want the newly created doctor back
+            .single();
 
         if (error) {
-            console.error('Error adding doctor:', error);
+            console.error('Error adding doctor:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
             throw error;
         }
         return data;
-    } catch (error) {
-        console.error('Supabase addDoctor error:', error);
-        return null;
+    } catch (caughtError: any) {
+        console.error('Exception in addDoctorEntry service function:', JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2));
+        throw caughtError;
     }
 };
 
@@ -94,65 +100,75 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
 
 export const getAppointments = async (): Promise<Appointment[]> => {
   try {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from(APPOINTMENTS_TABLE)
       .select('*')
-      .order('booked_at', { ascending: false }); // Or by date/time as needed
+      .order('booked_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching appointments:', error);
+      console.error(
+        `Error fetching appointments from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
+      );
       throw error;
     }
     return data || [];
-  } catch (error) {
-    console.error('Supabase getAppointments error:', error);
-    return [];
+  } catch (caughtError: any) {
+    console.error(
+        `Exception in getAppointments service function: ${JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2)}`
+    );
+    throw caughtError;
   }
 };
 
 export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData): Promise<Appointment | null> => {
   try {
-    // 'id' and 'booked_at' will be handled by Supabase defaults or triggers
-    // 'status' will be 'Pending' by default for new appointments
     const appointmentToInsert = {
       ...newAppointmentData,
       status: 'Pending' as Appointment['status'],
-      // booked_at is set by Supabase default now()
     };
 
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from(APPOINTMENTS_TABLE)
       .insert([appointmentToInsert])
       .select()
-      .single(); // Return the newly created appointment
+      .single(); 
 
     if (error) {
-      console.error('Error adding appointment:', error);
+      console.error(
+        `Error adding appointment. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
+      );
       throw error;
     }
     return data;
-  } catch (error) {
-    console.error('Supabase addAppointmentEntry error:', error);
-    return null;
+  } catch (caughtError: any) {
+    console.error(
+        `Exception in addAppointmentEntry service function: ${JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2)}`
+    );
+    throw caughtError;
   }
 };
 
 export const updateAppointmentStatusEntry = async (appointmentId: string, newStatus: Appointment['status']): Promise<Appointment | null> => {
   try {
-    const { data, error } = await supabase
+    const { data, error, status } = await supabase
       .from(APPOINTMENTS_TABLE)
       .update({ status: newStatus })
       .eq('id', appointmentId)
       .select()
-      .single(); // Return the updated appointment
+      .single();
 
     if (error) {
-      console.error('Error updating appointment status:', error);
+      console.error(
+        `Error updating appointment status. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`
+      );
       throw error;
     }
     return data;
-  } catch (error) {
-    console.error('Supabase updateAppointmentStatusEntry error:', error);
-    return null;
+  } catch (caughtError: any) {
+    console.error(
+        `Exception in updateAppointmentStatusEntry service function: ${JSON.stringify(caughtError, Object.getOwnPropertyNames(caughtError), 2)}`
+    );
+    throw caughtError;
   }
 };
+
