@@ -8,7 +8,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 export interface DoctorInfo {
   id: string; // uuid from Supabase
   name: string;
-  specialty: string;
+  specialty?: string | null | undefined; // Made optional/nullable
   created_at: string; // Supabase timestamp
   image_url?: string | null;
 }
@@ -62,30 +62,50 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
     if (error) {
       let errorMessage = `Error fetching doctors from Supabase. Status: ${status}. Error: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
       if (status === 401) {
-        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the Supabase anon key used by the application (likely NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local or hardcoded in supabaseClient.ts) is INCORRECT for your Supabase project or your server hasn't been restarted after changing it. Please verify the key *value* in your Supabase project API settings and ensure it's correctly set.`;
+        errorMessage += `\n\n[DEVELOPER HINT] A 401 error (Invalid API Key) means the value of NEXT_PUBLIC_SUPABASE_ANON_KEY in your .env.local file is incorrect for your Supabase project or your server hasn't been restarted after changing it. Please verify the key *value* in your Supabase project API settings and ensure it's correctly set in .env.local. The key being used by the client starts with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined').substring(0,5)}" and ends with "${(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'undefined').slice(-5)}"`;
       } else if (status === 404) {
          errorMessage += `\n\n[DEVELOPER HINT] A 404 error likely means the table '${DOCTORS_TABLE}' was not found. Please ensure the table exists in your Supabase project.`;
       } else {
         errorMessage += `\n\n[DEVELOPER HINT] This could be due to network issues, incorrect table name ('${DOCTORS_TABLE}'), or Row Level Security (RLS) policies preventing access. Data received (if any): ${JSON.stringify(data)}. Count: ${count}`;
       }
       console.error(errorMessage);
-      throw new Error(errorMessage); // Re-throw a new error with the composed message
+      throw new Error(errorMessage);
     }
     
     console.log(`[AppointmentService] Successfully fetched ${data?.length || 0} doctors. Supabase reported count: ${count}.`);
-    if (data && data.length === 0 && count === 0) {
-      console.log(`[AppointmentService] No doctors found in the '${DOCTORS_TABLE}' table.`);
+    
+    if (data && data.length > 0) {
+      console.log("[AppointmentService] First few fetched doctor records (raw from Supabase):", JSON.stringify(data.slice(0, 3), null, 2));
+      
+      // Map data to ensure 'specialty' property exists, checking for common miscasings or alternative names
+      const mappedData = data.map((doc: any) => {
+        // Prioritize 'specialty', then 'Specialty', then 'speciality'
+        const foundSpecialty = doc.specialty || doc.Specialty || doc.speciality || null;
+        return {
+          ...doc,
+          specialty: foundSpecialty, 
+        };
+      });
+      console.log("[AppointmentService] First few mapped doctor records (for app use):", JSON.stringify(mappedData.slice(0, 3), null, 2));
+
+
+      const specialtiesFoundInMappedData = mappedData.some(doc => doc.specialty && typeof doc.specialty === 'string' && doc.specialty.trim() !== '');
+      if (!specialtiesFoundInMappedData) {
+        console.warn("[AppointmentService] DEVELOPER HINT: Doctors were fetched, but after mapping, the 'specialty' field seems to be missing or empty in the processed data. Check the 'doctors' table schema in Supabase: ensure a column for specialty (e.g., 'specialty', 'Specialty', 'speciality') exists, is of type 'text', and contains data. Also verify RLS policies aren't hiding this column.");
+      }
+      return mappedData as DoctorInfo[];
     } else if (data && data.length === 0 && (count || 0) > 0) {
-      console.warn(`[AppointmentService] Fetched 0 doctors, but Supabase count is ${count}. This strongly suggests RLS policies are filtering out all records for the current user.`);
+      console.warn(`[AppointmentService] Fetched 0 doctors, but Supabase count is ${count}. This strongly suggests RLS policies are filtering out all records for the current user, or the SELECT policy is missing/incorrect for the '${DOCTORS_TABLE}' table.`);
+    } else {
+      console.log(`[AppointmentService] No doctors found in the '${DOCTORS_TABLE}' table or RLS preventing access.`);
     }
-    return data || [];
+    return []; // Return empty array if no data or error handled above
   } catch (caughtError: any) {
-    // Ensure the error message is a string
     const errorMessage = caughtError.message || `An unexpected error occurred in getDoctors: ${JSON.stringify(caughtError)}`;
     console.error(
         `[AppointmentService] Exception in getDoctors service function: ${errorMessage}`
     );
-    throw new Error(errorMessage); // Re-throw to be caught by the calling component
+    throw new Error(errorMessage);
   }
 };
 
@@ -109,7 +129,7 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
             console.error(errorMessage);
             throw new Error(errorMessage);
         }
-        return data;
+        return data as DoctorInfo;
     } catch (caughtError: any)
      {
         const errorMessage = caughtError.message || `An unexpected error occurred in addDoctorEntry: ${JSON.stringify(caughtError)}`;
@@ -141,7 +161,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     }
     console.log(`[AppointmentService] Successfully fetched ${data?.length || 0} appointments. Supabase reported count: ${count}.`);
      if (data && data.length === 0 && (count || 0) > 0) {
-      console.warn(`[AppointmentService] Fetched 0 appointments, but Supabase count is ${count}. This strongly suggests RLS policies are filtering out all records for the current user.`);
+      console.warn(`[AppointmentService] Fetched 0 appointments, but Supabase count is ${count}. This strongly suggests RLS policies are filtering out all records for the current user for the table '${APPOINTMENTS_TABLE}'.`);
     }
     return data || [];
   } catch (caughtError: any) {
@@ -214,6 +234,7 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
     throw new Error(errorMessage);
   }
 };
+    
     
 
     

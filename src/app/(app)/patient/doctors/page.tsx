@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,55 +29,62 @@ export default function PatientFindDoctorsPage() {
   const [selectedSpecialtyFilter, setSelectedSpecialtyFilter] = useState<string | null>(null);
   const [allSpecialties, setAllSpecialties] = useState<string[]>([]);
 
-  useEffect(() => {
-    const loadDoctors = async () => {
-      setIsLoading(true);
-      setFetchError(null);
-      try {
-        const fetchedDoctors = await getDoctors();
-        setDoctors(fetchedDoctors || []); 
-        if (fetchedDoctors && fetchedDoctors.length > 0) {
-          const uniqueSpecs = Array.from(new Set(fetchedDoctors.map(doc => doc.specialty).filter(Boolean) as string[]));
-          setAllSpecialties(uniqueSpecs.sort());
-        } else {
-          setAllSpecialties([]);
-        }
-      } catch (error: any) {
-        console.error("PatientFindDoctorsPage - Failed to fetch doctors:", error.message);
-        const detailedError = error.message || "Could not load doctor list. Please check console for more details.";
-        setFetchError(detailedError);
-        toast({ 
-          title: "Error Loading Doctors", 
-          description: detailedError, 
-          variant: "destructive",
-          duration: 10000 
-        });
-      } finally {
-        setIsLoading(false);
+  const loadDoctors = useCallback(async () => {
+    setIsLoading(true);
+    setFetchError(null);
+    try {
+      const fetchedDoctors = await getDoctors();
+      setDoctors(fetchedDoctors || []);
+      if (fetchedDoctors && fetchedDoctors.length > 0) {
+        const uniqueSpecs = Array.from(
+          new Set(
+            fetchedDoctors
+              .map(doc => doc.specialty) // doc.specialty might be string, null, or undefined
+              .filter(spec => typeof spec === 'string' && spec.trim() !== '') as string[] // Ensure it's a non-empty string
+          )
+        );
+        setAllSpecialties(uniqueSpecs.sort());
+      } else {
+        setAllSpecialties([]);
       }
-    };
-    loadDoctors();
+    } catch (error: any) {
+      console.error("PatientFindDoctorsPage - Failed to fetch doctors:", error.message);
+      const detailedError = error.message || "Could not load doctor list. Please check console for more details.";
+      setFetchError(detailedError);
+      toast({
+        title: "Error Loading Doctors",
+        description: detailedError,
+        variant: "destructive",
+        duration: 10000
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [toast]);
+
+
+  useEffect(() => {
+    loadDoctors();
+  }, [loadDoctors]);
 
   const filteredAndSortedDoctors = useMemo(() => {
     let result = [...doctors];
 
     if (selectedSpecialtyFilter) {
-      result = result.filter(doctor => 
-        doctor.specialty && doctor.specialty.toLowerCase() === selectedSpecialtyFilter.toLowerCase()
+      result = result.filter(doctor =>
+        doctor.specialty && typeof doctor.specialty === 'string' &&
+        doctor.specialty.toLowerCase() === selectedSpecialtyFilter.toLowerCase()
       );
     }
 
     if (searchTerm) {
       const lowerSearchTerm = searchTerm.toLowerCase();
       result = result.filter(doctor => {
-        const nameMatch = doctor.name && typeof doctor.name === 'string' && 
+        const nameMatch = doctor.name && typeof doctor.name === 'string' &&
                           doctor.name.toLowerCase().includes(lowerSearchTerm);
         
-        // If a specialty filter is NOT active, search term can also apply to specialty.
-        // If a specialty filter IS active, we've already filtered by specialty, so search term applies mainly to name.
-        const specialtySearchMatch = !selectedSpecialtyFilter && doctor.specialty && 
-                                     typeof doctor.specialty === 'string' && 
+        const specialtySearchMatch = !selectedSpecialtyFilter && doctor.specialty &&
+                                     typeof doctor.specialty === 'string' &&
                                      doctor.specialty.toLowerCase().includes(lowerSearchTerm);
         return nameMatch || specialtySearchMatch;
       });
@@ -211,3 +218,5 @@ export default function PatientFindDoctorsPage() {
   );
 }
 
+
+    
