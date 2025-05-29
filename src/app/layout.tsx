@@ -38,8 +38,8 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
           <div> {/* This div is the single child of AuthProvider */}
-            {children}
-            {isClient && <Toaster key="app-toaster" />} {/* Added key here */}
+            <React.Fragment key="page-content-wrapper">{children}</React.Fragment>
+            {isClient && <Toaster key="app-toaster" />}
           </div>
         </AuthProvider>
       </body>
