@@ -77,7 +77,12 @@ export default function PatientDashboardPage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {quickLinks.map((link) => (
-            <Button key={link.title} variant="outline" className="w-full justify-start text-base py-6 group hover:border-primary hover:bg-accent/10 dark:hover:bg-accent/5 transition-all duration-300 hover:shadow-md active:scale-95" asChild>
+            <Button 
+              key={link.title} 
+              variant="outline" 
+              className="w-full justify-start text-base py-6 group hover:border-primary hover:bg-accent/10 dark:hover:bg-accent/5 hover:text-foreground transition-all duration-300 hover:shadow-md active:scale-95" 
+              asChild
+            >
               <Link href={link.href}>
                 <link.icon className="mr-3 h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors duration-300" /> {link.title}
               </Link>
