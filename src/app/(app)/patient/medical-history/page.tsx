@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { ClipboardList, Download, FileText, CalendarDays, Paperclip, UserMd } from "lucide-react"; // Assuming UserMd or similar for doctor icon
+import { ClipboardList, Download, FileText, CalendarDays, Paperclip, User } from "lucide-react"; // Changed UserMd to User
 import { useToast } from '@/hooks/use-toast';
 
 interface MedicalRecord {
@@ -104,7 +104,7 @@ export default function PatientMedicalHistoryPage() {
                         <span className="mx-2 hidden sm:inline">|</span>
                         <CalendarDays className="ml-0 sm:ml-0 mr-1.5 h-4 w-4 flex-shrink-0" /> {record.date}
                         <span className="mx-2 hidden sm:inline">|</span>
-                        <UserMd className="ml-0 sm:ml-0 mr-1.5 h-4 w-4 flex-shrink-0" /> By: {record.doctor}
+                        <User className="ml-0 sm:ml-0 mr-1.5 h-4 w-4 flex-shrink-0" /> By: {record.doctor} {/* Changed UserMd to User */}
                       </p>
                     </div>
                     <Button 
@@ -184,5 +184,3 @@ export default function PatientMedicalHistoryPage() {
     </div>
   );
 }
-
-    
