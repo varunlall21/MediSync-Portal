@@ -2,9 +2,10 @@
 "use client";
 
 import type { User as SupabaseUser, Session } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export type UserRole = 'admin' | 'doctor' | 'patient' | null;
 
@@ -16,14 +17,13 @@ interface AuthContextType {
   login: (email: string, pass: string) => Promise<SupabaseUser | null>;
   signup: (email: string, pass: string) => Promise<SupabaseUser | null>;
   logout: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>; // Google Sign-In now initiates redirect, doesn't return user directly
-  assignRole: (newRole: UserRole) => void; // For demo purposes
+  signInWithGoogle: () => Promise<void>;
+  assignRole: (newRole: UserRole) => void;
   sendPasswordReset: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock function to get role. In a real app, this would come from Supabase user metadata or a DB.
 const getMockRole = (email?: string | null): UserRole => {
   if (!email) return null;
   if (email.includes('admin')) return 'admin';
@@ -31,7 +31,6 @@ const getMockRole = (email?: string | null): UserRole => {
   return 'patient';
 };
 
-// Helper to create a mock Supabase user for guest mode
 const createMockGuestUser = (): SupabaseUser => {
   const guestEmail = 'guest@example.com';
   return {
@@ -41,14 +40,12 @@ const createMockGuestUser = (): SupabaseUser => {
     user_metadata: {
       email: guestEmail,
       name: 'Guest Preview',
-      // Ensure common fields used by UserNav are present, even if empty
       full_name: 'Guest Preview',
       avatar_url: '',
       picture: '',
     },
     aud: 'authenticated',
     created_at: new Date().toISOString(),
-    // Add other fields required by Supabase User type with default/mock values
     confirmed_at: new Date().toISOString(),
     email_confirmed_at: new Date().toISOString(),
     phone: '',
@@ -58,16 +55,16 @@ const createMockGuestUser = (): SupabaseUser => {
   };
 };
 
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<UserRole>(null);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true); // Renamed for clarity
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => {
-    setLoading(true);
+    // Only run initial session check once
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       const currentUser = currentSession?.user ?? null;
@@ -75,12 +72,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(currentUser);
         setRole(getMockRole(currentUser.email));
       } else {
-        // Activate guest mode
         const guestUser = createMockGuestUser();
         setUser(guestUser);
         setRole(getMockRole(guestUser.email));
       }
-      setLoading(false);
+      setInitialLoading(false);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
@@ -91,77 +87,81 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(currentUser);
           setRole(getMockRole(currentUser.email));
         } else {
-          // Activate guest mode on logout or no session
           const guestUser = createMockGuestUser();
           setUser(guestUser);
           setRole(getMockRole(guestUser.email));
         }
-        setLoading(false);
+        // If initial loading was already false, no need to set it again.
+        // This also helps if auth state changes rapidly after initial load.
+        if (initialLoading) {
+            setInitialLoading(false);
+        }
       }
     );
 
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [initialLoading]); // Ensure this effect only runs to set up listener and initial state check
 
-  const login = async (email: string, pass: string) => {
-    setLoading(true);
+  const login = useCallback(async (email: string, pass: string) => {
+    // setLoading(true); // Handled by component using the hook if needed for UI changes
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
       if (error) throw error;
-      if (data.user) {
-        setUser(data.user);
-        setRole(getMockRole(data.user.email));
-        return data.user;
-      }
-      return null;
-    } catch (error) {
+      // onAuthStateChange will handle setUser and setRole
+      return data.user;
+    } catch (error: any) {
       console.error("Supabase login error:", error);
+      toast({ title: "Login Failed", description: error.message || "Invalid email or password.", variant: "destructive" });
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const signup = async (email: string, pass: string) => {
-    setLoading(true);
+  const signup = useCallback(async (email: string, pass: string) => {
+    // setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password: pass,
-        options: {
-          // data: { full_name: 'New User' }
-        }
       });
       if (error) throw error;
-      if (data.user) {
-         if (data.session) {
-            setUser(data.user);
-            setRole(getMockRole(data.user.email));
-            return data.user;
-         }
-         return data.user;
+      // onAuthStateChange will handle user state.
+      // Supabase returns user object even if email confirmation is pending.
+      if (data.user && !data.session) {
+         toast({ title: "Signup Almost Complete!", description: "Please check your email to confirm your account." });
+      } else if (data.user && data.session) {
+         toast({ title: "Signup Successful!", description: "Welcome to MediSync." });
       }
-      return null;
-    } catch (error) {
+      return data.user;
+    } catch (error: any) {
       console.error("Supabase signup error:", error);
+      toast({ title: "Signup Failed", description: error.message || "Could not create account.", variant: "destructive" });
       return null;
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const logout = async () => {
-    setLoading(true);
+  const logout = useCallback(async () => {
+    // setLoading(true);
     try {
       await supabase.auth.signOut();
-    } catch (error) {
+      // onAuthStateChange will handle setting user to guest and updating role.
+      // It will also cause initialLoading to become false if it wasn't already.
+      // router.push('/login'); // Let useEffect in page.tsx or dashboard handle redirect
+    } catch (error: any) {
       console.error("Supabase logout error:", error);
+      toast({ title: "Logout Error", description: error.message || "Failed to logout.", variant: "destructive" });
+    } finally {
+      // setLoading(false);
     }
-  };
+  }, [toast]); // router removed from deps
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
+    // setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -170,33 +170,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
       });
       if (error) throw error;
+      // Redirect happens, onAuthStateChange will handle the rest
     } catch (error: any) {
       console.error("Supabase Google sign-in error:", error.message);
+      toast({ title: "Google Sign-In Failed", description: error.message || "Could not sign in with Google.", variant: "destructive" });
+      // setLoading(false); // Only set loading false on error, redirect takes over
     }
-  };
+  }, [toast]);
 
-  const assignRole = (newRole: UserRole) => {
+  const assignRole = useCallback((newRole: UserRole) => {
     setRole(newRole);
     if (user && user.id === 'guest-preview-user') {
       console.warn("Assigning role to guest user. This is for UI demo only.");
     }
-  };
+  }, [user]); // user is a dependency
 
-  const sendPasswordReset = async (email: string) => {
+  const sendPasswordReset = useCallback(async (email: string) => {
+    // setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: typeof window !== 'undefined' ? window.location.origin + '/update-password' : undefined,
       });
       if (error) throw error;
+      toast({ title: "Password Reset Email Sent", description: "If an account exists for this email, a password reset link has been sent." });
     } catch (error: any) {
       console.error("Supabase password reset error:", error);
-      throw error;
+      toast({ title: "Password Reset Failed", description: error.message || "Could not send reset email.", variant: "destructive" });
+      // No re-throw, let toast handle user feedback
+    } finally {
+      // setLoading(false);
     }
+  }, [toast]);
+
+  const contextValue = { 
+    user, 
+    session, 
+    role, 
+    loading: initialLoading, // Use initialLoading for the exposed loading state
+    login, 
+    signup, 
+    logout, 
+    signInWithGoogle, 
+    assignRole, 
+    sendPasswordReset 
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, loading, login, signup, logout, signInWithGoogle, assignRole, sendPasswordReset }}>
-      {children}
+    <AuthContext.Provider value={contextValue}>
+      <div>{/* Explicit div wrapper for children */}
+        {children}
+      </div>
     </AuthContext.Provider>
   );
 };
