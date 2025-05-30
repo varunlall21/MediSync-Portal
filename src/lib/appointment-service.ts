@@ -6,11 +6,12 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Corresponds to the 'doctors' table in Supabase
 export interface DoctorInfo {
-  id: string; // uuid from Supabase
+  id: string; // uuid from Supabase, primary key of doctors table
   name: string;
   specialty?: string | null | undefined; 
   created_at: string; // Supabase timestamp
   image_url?: string | null;
+  auth_user_id?: string | null; // Foreign key to Supabase auth.users.id
 }
 
 // Corresponds to the 'appointments' table in Supabase
@@ -20,13 +21,13 @@ export interface Appointment {
   patient_user_id: string | null; // User's auth ID
   doctor_id: string; // uuid, foreign key to doctors.id
   doctor_name: string; // Denormalized for easy display
-  specialty: string; // Denormalized for easy display
+  specialty: string; // Denormalized
   date: string; // YYYY-MM-DD
   time: string;
   reason?: string | null;
   status: "Pending" | "Approved" | "Cancelled" | "Completed";
   booked_at: string; // Supabase timestamp
-  doctor_image_url?: string | null; // Added to match dashboard usage
+  doctor_image_url?: string | null; 
 }
 
 export interface NewAppointmentData {
@@ -38,13 +39,14 @@ export interface NewAppointmentData {
   date: string; 
   time: string;
   reason?: string;
-  doctor_image_url?: string | null; // Optional: if you want to store this at booking time
+  doctor_image_url?: string | null;
 }
 
 export interface NewDoctorData {
     name: string;
     specialty: string;
     image_url?: string | null;
+    auth_user_id?: string | null; // To link to an auth user if needed
 }
 
 
@@ -135,6 +137,33 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
         console.error(`[AppointmentService] Exception in addDoctorEntry: ${errorMessage}`);
         throw new Error(errorMessage);
     }
+};
+
+export const getDoctorProfileByAuthUserId = async (authUserId: string): Promise<DoctorInfo | null> => {
+  console.log(`[AppointmentService] Attempting to fetch doctor profile for auth_user_id: ${authUserId}`);
+  try {
+    const { data, error, status } = await supabase
+      .from(DOCTORS_TABLE)
+      .select('*')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle(); // Use maybeSingle to return null if not found, instead of erroring
+
+    if (error && status !== 406) { // 406 is PostgREST for "Not Acceptable", often when 0 rows and .single() is used. maybeSingle() avoids this for 0 rows.
+      console.error(`[AppointmentService] Error fetching doctor profile by auth_user_id ${authUserId}. Status: ${status}. Error:`, error);
+      throw error;
+    }
+    
+    if (data) {
+      console.log(`[AppointmentService] Doctor profile found for auth_user_id ${authUserId}:`, data);
+      return data as DoctorInfo;
+    } else {
+      console.log(`[AppointmentService] No doctor profile found for auth_user_id ${authUserId}. This doctor may need their profile linked in the 'doctors' table.`);
+      return null;
+    }
+  } catch (caughtError: any) {
+    console.error(`[AppointmentService] Exception in getDoctorProfileByAuthUserId for ${authUserId}:`, caughtError);
+    throw caughtError;
+  }
 };
 
 
@@ -237,3 +266,4 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
     
 
     
+
