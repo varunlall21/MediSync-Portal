@@ -11,7 +11,7 @@ export interface DoctorInfo {
   specialty?: string | null | undefined;
   created_at: string; // Supabase timestamp
   image_url?: string | null;
-  auth_user_id?: string | null; // Foreign key to Supabase auth.users.id
+  auth_user_id?: string | null; // Foreign key to Supabase auth.users.id (optional, used for personalization)
 }
 
 // Corresponds to the 'appointments' table in Supabase
@@ -73,7 +73,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
         errorMessage += `\n\n[DEVELOPER HINT] This could be due to network issues, incorrect table name ('${DOCTORS_TABLE}'), or Row Level Security (RLS) policies preventing access. Data received (if any): ${JSON.stringify(data)}. Count: ${count}`;
       }
       console.error(errorMessage);
-      throw error; // Re-throw the original Supabase error object
+      throw error; 
     }
     
     console.log(`[AppointmentService] Successfully fetched ${data?.length || 0} doctors. Supabase reported count: ${count}.`);
@@ -91,7 +91,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
       console.log("[AppointmentService] First few mapped doctor records (for app use):", JSON.stringify(mappedData.slice(0, 3), null, 2));
 
       const specialtiesFoundInMappedData = mappedData.some(doc => doc.specialty && typeof doc.specialty === 'string' && doc.specialty.trim() !== '');
-      if (!specialtiesFoundInMappedData && mappedData.length > 0) { // Added check for mappedData.length > 0
+      if (!specialtiesFoundInMappedData && mappedData.length > 0) { 
         console.warn("[AppointmentService] DEVELOPER HINT: Doctors were fetched, but after mapping, the 'specialty' field seems to be missing or empty in the processed data. Check the 'doctors' table schema in Supabase: ensure a column for specialty (e.g., 'specialty', 'Specialty', 'speciality') exists, is of type 'text', and contains data. Also verify RLS policies aren't hiding this column.");
       }
       return mappedData as DoctorInfo[];
@@ -102,14 +102,20 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
     }
     return [];
   } catch (caughtError: any) {
-    // Log the caught error directly. If it has properties, they should be visible.
-    // If it's still an empty object, the error being thrown is truly minimal.
-    console.error(`[AppointmentService] Exception in getDoctors service function:`, caughtError);
-    // Provide more context for common error types
+    const errorDetails = {
+      message: caughtError.message,
+      name: caughtError.name,
+      stack: caughtError.stack ? caughtError.stack.split('\n').slice(0, 5).join('\n') : undefined,
+      status: caughtError.status,
+      code: caughtError.code,
+      details: caughtError.details,
+      hint: caughtError.hint,
+    };
+    console.error(`[AppointmentService] Exception in getDoctors service function:`, errorDetails);
     if (caughtError && caughtError.message && caughtError.message.includes("fetch")) {
         console.error("[AppointmentService] This might be a network issue or a problem reaching the Supabase server.");
     }
-    throw caughtError; // Re-throw the error to be handled by the calling component
+    throw caughtError;
   }
 };
 
@@ -140,58 +146,6 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
         throw caughtError;
     }
 };
-
-export const getDoctorProfileByAuthUserId = async (authUserId: string): Promise<DoctorInfo | null> => {
-  console.log(`[AppointmentService] Attempting to fetch doctor profile for auth_user_id: ${authUserId}`);
-  try {
-    const { data, error, status } = await supabase
-      .from(DOCTORS_TABLE)
-      .select('*')
-      .eq('auth_user_id', authUserId)
-      .maybeSingle();
-
-    if (error && status !== 406) {
-      let errorMessage = `[AppointmentService] Error fetching doctor profile by auth_user_id ${authUserId}. Status: ${status}. Supabase error: message - ${error.message}, code - ${error.code}, details - ${error.details}, hint - ${error.hint}. Full error object: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
-      console.error(errorMessage);
-      throw error;
-    }
-    
-    if (data) {
-      console.log(`[AppointmentService] Doctor profile found for auth_user_id ${authUserId}:`, data);
-      return data as DoctorInfo;
-    } else {
-      console.log(`[AppointmentService] No doctor profile found for auth_user_id ${authUserId}. This doctor may need their profile linked in the 'doctors' table.`);
-      return null;
-    }
-  } catch (caughtError: any) {
-    // Custom stringify for better error logging
-    const getCircularReplacer = () => {
-      const seen = new WeakSet();
-      return (key: string, value: any) => {
-        if (typeof value === "object" && value !== null) {
-          if (seen.has(value)) {
-            return "[Circular]";
-          }
-          seen.add(value);
-        }
-        return value;
-      };
-    };
-    const errorDetails = {
-      message: caughtError.message,
-      name: caughtError.name,
-      stack: caughtError.stack ? caughtError.stack.split('\n').slice(0, 5).join('\n') : undefined, // First 5 lines of stack
-      status: caughtError.status, // Common in Supabase errors
-      code: caughtError.code,     // Common in Supabase errors
-      details: caughtError.details, // Common in Supabase errors
-      hint: caughtError.hint,       // Common in Supabase errors
-      fullErrorString: JSON.stringify(caughtError, getCircularReplacer(), 2)
-    };
-    console.error(`[AppointmentService] Exception in getDoctorProfileByAuthUserId for ${authUserId}:`, errorDetails);
-    throw caughtError;
-  }
-};
-
 
 // --- Appointment Service Functions ---
 
@@ -280,8 +234,3 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
   }
 };
     
-    
-
-    
-
-
