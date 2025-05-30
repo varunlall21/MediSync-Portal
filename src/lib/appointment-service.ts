@@ -8,7 +8,7 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 export interface DoctorInfo {
   id: string; // uuid from Supabase, primary key of doctors table
   name: string;
-  specialty?: string | null | undefined; 
+  specialty?: string | null | undefined;
   created_at: string; // Supabase timestamp
   image_url?: string | null;
   auth_user_id?: string | null; // Foreign key to Supabase auth.users.id
@@ -27,16 +27,16 @@ export interface Appointment {
   reason?: string | null;
   status: "Pending" | "Approved" | "Cancelled" | "Completed";
   booked_at: string; // Supabase timestamp
-  doctor_image_url?: string | null; 
+  doctor_image_url?: string | null;
 }
 
 export interface NewAppointmentData {
   patient_name: string;
   patient_user_id: string | null;
   doctor_id: string;
-  doctor_name: string; 
-  specialty: string;   
-  date: string; 
+  doctor_name: string;
+  specialty: string;
+  date: string;
   time: string;
   reason?: string;
   doctor_image_url?: string | null;
@@ -60,7 +60,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
   try {
     const { data, error, status, count } = await supabase
       .from(DOCTORS_TABLE)
-      .select('*', { count: 'exact' }) 
+      .select('*', { count: 'exact' })
       .order('name', { ascending: true });
 
     if (error) {
@@ -73,7 +73,7 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
         errorMessage += `\n\n[DEVELOPER HINT] This could be due to network issues, incorrect table name ('${DOCTORS_TABLE}'), or Row Level Security (RLS) policies preventing access. Data received (if any): ${JSON.stringify(data)}. Count: ${count}`;
       }
       console.error(errorMessage);
-      throw new Error(errorMessage);
+      throw error; // Re-throw the original Supabase error object
     }
     
     console.log(`[AppointmentService] Successfully fetched ${data?.length || 0} doctors. Supabase reported count: ${count}.`);
@@ -85,13 +85,13 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
         const foundSpecialty = doc.specialty || doc.Specialty || doc.speciality || null;
         return {
           ...doc,
-          specialty: foundSpecialty, 
+          specialty: foundSpecialty,
         };
       });
       console.log("[AppointmentService] First few mapped doctor records (for app use):", JSON.stringify(mappedData.slice(0, 3), null, 2));
 
       const specialtiesFoundInMappedData = mappedData.some(doc => doc.specialty && typeof doc.specialty === 'string' && doc.specialty.trim() !== '');
-      if (!specialtiesFoundInMappedData) {
+      if (!specialtiesFoundInMappedData && mappedData.length > 0) { // Added check for mappedData.length > 0
         console.warn("[AppointmentService] DEVELOPER HINT: Doctors were fetched, but after mapping, the 'specialty' field seems to be missing or empty in the processed data. Check the 'doctors' table schema in Supabase: ensure a column for specialty (e.g., 'specialty', 'Specialty', 'speciality') exists, is of type 'text', and contains data. Also verify RLS policies aren't hiding this column.");
       }
       return mappedData as DoctorInfo[];
@@ -100,13 +100,16 @@ export const getDoctors = async (): Promise<DoctorInfo[]> => {
     } else {
       console.log(`[AppointmentService] No doctors found in the '${DOCTORS_TABLE}' table or RLS preventing access.`);
     }
-    return []; 
+    return [];
   } catch (caughtError: any) {
-    const errorMessage = caughtError.message || `An unexpected error occurred in getDoctors: ${JSON.stringify(caughtError)}`;
-    console.error(
-        `[AppointmentService] Exception in getDoctors service function: ${errorMessage}`
-    );
-    throw new Error(errorMessage);
+    // Log the caught error directly. If it has properties, they should be visible.
+    // If it's still an empty object, the error being thrown is truly minimal.
+    console.error(`[AppointmentService] Exception in getDoctors service function:`, caughtError);
+    // Provide more context for common error types
+    if (caughtError && caughtError.message && caughtError.message.includes("fetch")) {
+        console.error("[AppointmentService] This might be a network issue or a problem reaching the Supabase server.");
+    }
+    throw caughtError; // Re-throw the error to be handled by the calling component
   }
 };
 
@@ -128,14 +131,13 @@ export const addDoctorEntry = async (doctorData: NewDoctorData): Promise<DoctorI
                  errorMessage += `\n\n[DEVELOPER HINT] A 403 error (Forbidden) likely means Row Level Security (RLS) policies are preventing this user from inserting into the '${DOCTORS_TABLE}' table. Ensure an INSERT policy exists for this user's role.`;
             }
             console.error(errorMessage);
-            throw new Error(errorMessage);
+            throw error;
         }
         return data as DoctorInfo;
     } catch (caughtError: any)
      {
-        const errorMessage = caughtError.message || `An unexpected error occurred in addDoctorEntry: ${JSON.stringify(caughtError)}`;
-        console.error(`[AppointmentService] Exception in addDoctorEntry: ${errorMessage}`);
-        throw new Error(errorMessage);
+        console.error(`[AppointmentService] Exception in addDoctorEntry:`, caughtError);
+        throw caughtError;
     }
 };
 
@@ -146,10 +148,11 @@ export const getDoctorProfileByAuthUserId = async (authUserId: string): Promise<
       .from(DOCTORS_TABLE)
       .select('*')
       .eq('auth_user_id', authUserId)
-      .maybeSingle(); // Use maybeSingle to return null if not found, instead of erroring
+      .maybeSingle();
 
-    if (error && status !== 406) { // 406 is PostgREST for "Not Acceptable", often when 0 rows and .single() is used. maybeSingle() avoids this for 0 rows.
-      console.error(`[AppointmentService] Error fetching doctor profile by auth_user_id ${authUserId}. Status: ${status}. Error:`, error);
+    if (error && status !== 406) {
+      let errorMessage = `[AppointmentService] Error fetching doctor profile by auth_user_id ${authUserId}. Status: ${status}. Supabase error: message - ${error.message}, code - ${error.code}, details - ${error.details}, hint - ${error.hint}. Full error object: ${JSON.stringify(error, Object.getOwnPropertyNames(error), 2)}`;
+      console.error(errorMessage);
       throw error;
     }
     
@@ -161,7 +164,30 @@ export const getDoctorProfileByAuthUserId = async (authUserId: string): Promise<
       return null;
     }
   } catch (caughtError: any) {
-    console.error(`[AppointmentService] Exception in getDoctorProfileByAuthUserId for ${authUserId}:`, caughtError);
+    // Custom stringify for better error logging
+    const getCircularReplacer = () => {
+      const seen = new WeakSet();
+      return (key: string, value: any) => {
+        if (typeof value === "object" && value !== null) {
+          if (seen.has(value)) {
+            return "[Circular]";
+          }
+          seen.add(value);
+        }
+        return value;
+      };
+    };
+    const errorDetails = {
+      message: caughtError.message,
+      name: caughtError.name,
+      stack: caughtError.stack ? caughtError.stack.split('\n').slice(0, 5).join('\n') : undefined, // First 5 lines of stack
+      status: caughtError.status, // Common in Supabase errors
+      code: caughtError.code,     // Common in Supabase errors
+      details: caughtError.details, // Common in Supabase errors
+      hint: caughtError.hint,       // Common in Supabase errors
+      fullErrorString: JSON.stringify(caughtError, getCircularReplacer(), 2)
+    };
+    console.error(`[AppointmentService] Exception in getDoctorProfileByAuthUserId for ${authUserId}:`, errorDetails);
     throw caughtError;
   }
 };
@@ -185,7 +211,7 @@ export const getAppointments = async (): Promise<Appointment[]> => {
          errorMessage += `\n\n[DEVELOPER HINT] This could be due to network issues, incorrect table name ('${APPOINTMENTS_TABLE}'), or Row Level Security (RLS) policies preventing access. Count: ${count}. Data: ${JSON.stringify(data)}`;
       }
       console.error(errorMessage);
-      throw new Error(errorMessage);
+      throw error;
     }
     console.log(`[AppointmentService] Successfully fetched ${data?.length || 0} appointments. Supabase reported count: ${count}.`);
      if (data && data.length === 0 && (count || 0) > 0) {
@@ -193,11 +219,8 @@ export const getAppointments = async (): Promise<Appointment[]> => {
     }
     return (data || []) as Appointment[];
   } catch (caughtError: any) {
-     const errorMessage = caughtError.message || `An unexpected error occurred in getAppointments: ${JSON.stringify(caughtError)}`;
-    console.error(
-        `[AppointmentService] Exception in getAppointments: ${errorMessage}`
-    );
-    throw new Error(errorMessage);
+    console.error(`[AppointmentService] Exception in getAppointments:`, caughtError);
+    throw caughtError;
   }
 };
 
@@ -205,7 +228,7 @@ export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData
   try {
     const appointmentToInsert = {
       ...newAppointmentData,
-      status: 'Pending' as Appointment['status'], 
+      status: 'Pending' as Appointment['status'],
     };
 
     const { data, error, status } = await supabase
@@ -222,15 +245,12 @@ export const addAppointmentEntry = async (newAppointmentData: NewAppointmentData
         errorMessage += `\n\n[DEVELOPER HINT] A 403 error (Forbidden) likely means Row Level Security (RLS) policies are preventing this user (patient_user_id: ${newAppointmentData.patient_user_id}) from inserting into the '${APPOINTMENTS_TABLE}' table. Ensure an INSERT policy exists for this user.`;
       }
       console.error(errorMessage);
-      throw new Error(errorMessage);
+      throw error;
     }
     return data as Appointment;
   } catch (caughtError: any) {
-    const errorMessage = caughtError.message || `An unexpected error occurred in addAppointmentEntry: ${JSON.stringify(caughtError)}`;
-    console.error(
-        `[AppointmentService] Exception in addAppointmentEntry: ${errorMessage}`
-    );
-    throw new Error(errorMessage);
+    console.error(`[AppointmentService] Exception in addAppointmentEntry:`, caughtError);
+    throw caughtError;
   }
 };
 
@@ -251,19 +271,17 @@ export const updateAppointmentStatusEntry = async (appointmentId: string, newSta
          errorMessage += `\n\n[DEVELOPER HINT] A 403 error (Forbidden) likely means Row Level Security (RLS) policies are preventing this user from updating appointment ${appointmentId}. Ensure an UPDATE policy exists for this user's role and the specific conditions.`;
       }
       console.error(errorMessage);
-      throw new Error(errorMessage);
+      throw error;
     }
     return data as Appointment;
   } catch (caughtError: any) {
-    const errorMessage = caughtError.message || `An unexpected error occurred in updateAppointmentStatusEntry: ${JSON.stringify(caughtError)}`;
-    console.error(
-        `[AppointmentService] Exception in updateAppointmentStatusEntry: ${errorMessage}`
-    );
-    throw new Error(errorMessage);
+    console.error(`[AppointmentService] Exception in updateAppointmentStatusEntry:`, caughtError);
+    throw caughtError;
   }
 };
     
     
 
     
+
 
