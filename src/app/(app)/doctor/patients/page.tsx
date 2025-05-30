@@ -29,12 +29,11 @@ export default function DoctorPatientsPage() {
     try {
       const allAppointments = await getAppointments();
       
-      // Derive unique patients list
       const patientMap = new Map<string, PatientListItem>();
 
       allAppointments.forEach(appt => {
-        const patientId = appt.patient_user_id || appt.patient_name; // Prioritize user_id
-        if (!patientId) return; // Skip if no identifier
+        const patientId = appt.patient_user_id || appt.patient_name; 
+        if (!patientId) return; 
 
         const existingPatient = patientMap.get(patientId);
         const currentAppointmentDate = parseISO(appt.date);
@@ -47,7 +46,6 @@ export default function DoctorPatientsPage() {
             raw_patient_user_id: appt.patient_user_id
           });
         } else {
-          // Update last visit if current appointment is more recent
           if (existingPatient.lastVisit && parseISO(existingPatient.lastVisit) < currentAppointmentDate) {
             existingPatient.lastVisit = format(currentAppointmentDate, 'yyyy-MM-dd');
           }
@@ -104,14 +102,12 @@ export default function DoctorPatientsPage() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-4">
-            List of patients who have had appointments. Click on a patient to view or update their medical history. 
-            (Note: Currently shows all patients in the system due to pending doctor-specific filtering).
+            List of patients who have had appointments. Click on a patient to view or update their medical history.
           </p>
           
           {patients.length > 0 ? (
             <ul className="space-y-3">
               {patients.map(patient => {
-                // Use raw_patient_user_id for link if available, otherwise the potentially slugified patient.id
                 const patientLinkIdentifier = patient.raw_patient_user_id || patient.id.toLowerCase().replace(/\s+/g, '-');
                 return (
                   <li key={patient.id} className="p-4 border rounded-lg flex justify-between items-center hover:bg-muted/50 transition-colors">
@@ -136,3 +132,4 @@ export default function DoctorPatientsPage() {
     </div>
   );
 }
+
