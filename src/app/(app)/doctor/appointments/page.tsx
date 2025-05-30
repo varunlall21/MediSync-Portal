@@ -15,6 +15,7 @@ export default function DoctorManageAppointmentsPage() {
   const { toast } = useToast();
   const { user, loading: authLoading, role } = useAuth();
 
+  
   const fetchAppointmentRequests = useCallback(async () => {
     if (!user || role !== 'doctor') {
         setAppointmentRequests([]);

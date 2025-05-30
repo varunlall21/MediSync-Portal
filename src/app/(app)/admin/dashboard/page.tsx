@@ -17,6 +17,7 @@ interface AdminDashboardStats {
   systemHealth: string; // Keep mock for now
 }
 
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminDashboardStats>({
     totalUsers: "1,250", // Mock

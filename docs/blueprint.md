@@ -1,5 +1,6 @@
 # **App Name**: MediSync Portal
 
+
 ## Core Features:
 
 - Authentication: User authentication via Firebase (email/password, Google sign-in) to ensure secure access.

@@ -48,6 +48,7 @@ export default function ManageDoctorsPage() {
       specialty: newDoctorSpecialty,
     };
 
+    
     try {
       const addedDoctor = await addDoctorEntry(newDoctorData);
       if (addedDoctor) {

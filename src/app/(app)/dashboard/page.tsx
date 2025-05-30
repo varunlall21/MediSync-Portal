@@ -10,6 +10,7 @@ export default function GenericDashboardPage() {
   const { role, loading } = useAuth();
   const router = useRouter();
 
+  
   useEffect(() => {
     if (!loading && role) {
       router.replace(`/${role}/dashboard`);
