@@ -53,24 +53,16 @@ export default function SignupPage() {
     const signedUpUser = await signup(values.email, values.password);
     setIsLoading(false);
     if (signedUpUser) {
-      // With Supabase, user might need to confirm their email
-      // The user object is returned even if confirmation is pending.
-      // The session will only be active after confirmation (if enabled in Supabase).
       const isConfirmed = signedUpUser.email_confirmed_at || (signedUpUser.user_metadata as any)?.email_verified;
 
-      if (isConfirmed || !signedUpUser.email_confirmed_at) { // Check if confirmed or if confirmation field doesn't exist (older Supabase user objects or auto-confirm)
+      if (isConfirmed || !signedUpUser.email_confirmed_at) { 
         toast({ title: "Signup Successful", description: "Welcome to MediSync! You can now log in." });
          router.push("/login"); 
       } else {
          toast({ title: "Signup Almost Complete!", description: "Please check your email to confirm your account before logging in." });
-         // Optionally redirect to a "please confirm email" page or stay here
       }
     } else {
-      toast({
-        title: "Signup Failed",
-        description: "Could not create account. The email might already be in use or another error occurred.",
-        variant: "destructive",
-      });
+      // Error toast is handled within the signup function in AuthContext
     }
   };
 
