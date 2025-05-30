@@ -34,32 +34,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       // If auth is resolved and there's no user, redirect to login
       router.replace('/login');
     }
-    // If user exists but role is somehow null (after loading),
-    // they will see the loading spinner below until role is determined.
-    // Or, if they are on a page that doesn't match their role, they might get stuck
-    // on the spinner if the target dashboard isn't accessible due to navConfig.
-    // This part might need refinement based on how roles are fully managed.
   }, [user, loading, router]);
 
-  if (loading || (user && !role)) { 
+  if (loading || (user && !role && pathname !== '/settings' )) { 
     // Show loading if:
     // 1. Auth context is still loading initial state.
-    // 2. User object exists, but role is not yet determined (e.g., getMockRole hasn't run or returned null).
+    // 2. User object exists, but role is not yet determined (and not on settings page which might be accessible without full role)
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background text-foreground">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background text-foreground">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-lg">Initializing your session...</p>
       </div>
     );
   }
 
-  if (!user) { 
+  if (!user && !loading) { 
     // This case should ideally be handled by the useEffect redirecting to /login.
     // However, as a safeguard or if the redirect hasn't happened yet,
     // return null to prevent rendering the app layout for an unauthenticated user.
+    // This also handles the brief moment after logout before redirect.
     return null;
   }
   
+  // If user exists, but role is null, and we ARE on settings, allow access.
+  // Otherwise, if role is null (and not loading, and user exists), something is wrong,
+  // but we let it proceed to render Sidebar with potentially empty navConfig, or user sees content based on path.
   const currentNavItems = navConfig[role as Exclude<UserRole, null>] || [];
 
   return (
