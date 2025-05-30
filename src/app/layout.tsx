@@ -17,11 +17,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [isClient, setIsClient] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
     // This effect runs only on the client, after initial mount
-    setIsClient(true);
+    setHasMounted(true);
 
     const theme = localStorage.getItem("theme");
     const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -38,8 +38,8 @@ export default function RootLayout({
       <body className={`${inter.variable} antialiased`}>
         <AuthProvider>
           <div> {/* This div is the single child of AuthProvider */}
-            <React.Fragment key="page-content-wrapper">{children}</React.Fragment>
-            {isClient && <Toaster key="app-toaster" />}
+            {children}
+            {hasMounted && <Toaster />}
           </div>
         </AuthProvider>
       </body>
