@@ -32,28 +32,50 @@ export default function DoctorPatientsPage() {
       const patientMap = new Map<string, PatientListItem>();
 
       allAppointments.forEach(appt => {
-        const patientId = appt.patient_user_id || appt.patient_name; 
-        if (!patientId) return; 
+        // Use patient_user_id as the primary key if available, otherwise fall back to patient_name.
+        // This helps group appointments for the same registered user even if their name was entered slightly differently.
+        // For unregistered/guest patients, patient_name will be the key.
+        const patientKey = appt.patient_user_id || appt.patient_name; 
+        if (!patientKey) return; // Skip if no identifier
 
-        const existingPatient = patientMap.get(patientId);
-        const currentAppointmentDate = parseISO(appt.date);
+        const existingPatient = patientMap.get(patientKey);
+        let appointmentDate;
+        try {
+            appointmentDate = parseISO(appt.date);
+        } catch (e) {
+            console.warn(`Invalid date format for appointment ${appt.id}: ${appt.date}. Skipping this appointment for patient aggregation.`);
+            return; 
+        }
+
 
         if (!existingPatient) {
-          patientMap.set(patientId, {
-            id: patientId,
-            name: appt.patient_name,
-            lastVisit: format(currentAppointmentDate, 'yyyy-MM-dd'),
-            raw_patient_user_id: appt.patient_user_id
+          patientMap.set(patientKey, {
+            id: patientKey, // This is the key used for the map, could be user_id or name
+            name: appt.patient_name, // Always store the display name
+            lastVisit: format(appointmentDate, 'yyyy-MM-dd'),
+            raw_patient_user_id: appt.patient_user_id // Store the actual user_id if present
           });
         } else {
-          if (existingPatient.lastVisit && parseISO(existingPatient.lastVisit) < currentAppointmentDate) {
-            existingPatient.lastVisit = format(currentAppointmentDate, 'yyyy-MM-dd');
+          // Update last visit if this appointment is more recent
+          if (existingPatient.lastVisit && parseISO(existingPatient.lastVisit) < appointmentDate) {
+            existingPatient.lastVisit = format(appointmentDate, 'yyyy-MM-dd');
+          }
+          // Ensure raw_patient_user_id is captured if it wasn't on the first encounter
+          if (!existingPatient.raw_patient_user_id && appt.patient_user_id) {
+            existingPatient.raw_patient_user_id = appt.patient_user_id;
           }
         }
       });
 
-      const uniquePatients = Array.from(patientMap.values()).sort((a,b) => a.name.localeCompare(b.name));
-      setPatients(uniquePatients);
+      let uniquePatientList = Array.from(patientMap.values());
+      
+      // Filter out patients whose name is "doctor" (case-insensitive)
+      uniquePatientList = uniquePatientList.filter(p => p.name?.toLowerCase() !== 'doctor');
+      
+      // Sort patients by name
+      uniquePatientList.sort((a,b) => (a.name || "").localeCompare(b.name || ""));
+      
+      setPatients(uniquePatientList);
 
     } catch (err: any) {
       console.error("Error fetching patients data for doctor:", err);
@@ -108,6 +130,7 @@ export default function DoctorPatientsPage() {
           {patients.length > 0 ? (
             <ul className="space-y-3">
               {patients.map(patient => {
+                // Prioritize raw_patient_user_id for linking if available, otherwise use the patient.id (which might be the name)
                 const patientLinkIdentifier = patient.raw_patient_user_id || patient.id.toLowerCase().replace(/\s+/g, '-');
                 return (
                   <li key={patient.id} className="p-4 border rounded-lg flex justify-between items-center hover:bg-muted/50 transition-colors">
@@ -132,4 +155,3 @@ export default function DoctorPatientsPage() {
     </div>
   );
 }
-
