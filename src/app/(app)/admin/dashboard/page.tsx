@@ -8,6 +8,7 @@ import { Users, Stethoscope, CalendarDays, ShieldCheck, Activity, BarChart3, Loa
 import Link from "next/link";
 import { getDoctors } from '@/lib/appointment-service';
 import { getAppointments, type Appointment } from '@/lib/appointment-service';
+import { useToast } from '@/hooks/use-toast'; // Added useToast
 
 interface AdminDashboardStats {
   totalUsers: string; // Keep mock for now
@@ -25,6 +26,7 @@ export default function AdminDashboardPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast(); // Initialized useToast
 
   const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
@@ -54,6 +56,13 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  const handleQuickReportClick = (reportName: string) => {
+    toast({
+      title: "Feature Not Implemented",
+      description: `${reportName} functionality is not yet available.`,
+    });
+  };
 
   const statCards = [
     { title: "Total Users", value: stats.totalUsers, icon: Users, color: "text-sky-500 dark:text-sky-400", link: "/admin/users", loading: isLoading },
@@ -136,9 +145,27 @@ export default function AdminDashboardPage() {
             <CardDescription>Access common system reports.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button variant="outline" className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95">User Activity Report</Button>
-            <Button variant="outline" className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95">Appointment Statistics</Button>
-            <Button variant="outline" className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95">Doctor Performance</Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95"
+              onClick={() => handleQuickReportClick("User Activity Report")}
+            >
+              User Activity Report
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95"
+              onClick={() => handleQuickReportClick("Appointment Statistics")}
+            >
+              Appointment Statistics
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full justify-start hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95"
+              onClick={() => handleQuickReportClick("Doctor Performance")}
+            >
+              Doctor Performance
+            </Button>
           </CardContent>
         </Card>
       </div>
