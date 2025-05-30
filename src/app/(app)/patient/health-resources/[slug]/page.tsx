@@ -1,12 +1,15 @@
 
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, FileSpreadsheet, HeartPulse, Brain } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, FileSpreadsheet, HeartPulse, Brain, Calculator, Percent, Scale } from 'lucide-react'; // Added Calculator, Percent, Scale
 import type { LucideIcon } from 'lucide-react';
 
 interface HealthResourceContent {
@@ -15,9 +18,203 @@ interface HealthResourceContent {
   icon: LucideIcon;
   fullDescription: string;
   details: React.ReactNode;
+  isTool?: boolean; // To differentiate informational content from tools
 }
 
+const BmiCalculator: React.FC = () => {
+  const [height, setHeight] = useState<string>('');
+  const [weight, setWeight] = useState<string>('');
+  const [heightUnit, setHeightUnit] = useState<'cm' | 'ftin'>('cm');
+  const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>('kg');
+  const [bmiResult, setBmiResult] = useState<number | null>(null);
+  const [bmiInterpretation, setBmiInterpretation] = useState<string>('');
+
+  const [feet, setFeet] = useState<string>('');
+  const [inches, setInches] = useState<string>('');
+
+  const calculateBmi = () => {
+    let heightInMeters: number;
+    let weightInKg: number;
+
+    if (heightUnit === 'cm') {
+      if (!height || parseFloat(height) <= 0) {
+        setBmiInterpretation("Please enter a valid height.");
+        setBmiResult(null);
+        return;
+      }
+      heightInMeters = parseFloat(height) / 100;
+    } else { // ftin
+      const ft = parseFloat(feet);
+      const inc = parseFloat(inches);
+      if (isNaN(ft) || ft < 0 || isNaN(inc) || inc < 0 || inc >= 12) {
+         setBmiInterpretation("Please enter valid feet and inches.");
+         setBmiResult(null);
+         return;
+      }
+      heightInMeters = (ft * 12 + inc) * 0.0254;
+    }
+
+    if (weightUnit === 'kg') {
+      if (!weight || parseFloat(weight) <= 0) {
+        setBmiInterpretation("Please enter a valid weight.");
+        setBmiResult(null);
+        return;
+      }
+      weightInKg = parseFloat(weight);
+    } else { // lbs
+      if (!weight || parseFloat(weight) <= 0) {
+        setBmiInterpretation("Please enter a valid weight.");
+        setBmiResult(null);
+        return;
+      }
+      weightInKg = parseFloat(weight) * 0.453592;
+    }
+
+    if (heightInMeters > 0 && weightInKg > 0) {
+      const bmi = weightInKg / (heightInMeters * heightInMeters);
+      setBmiResult(parseFloat(bmi.toFixed(1)));
+
+      if (bmi < 18.5) setBmiInterpretation('Underweight');
+      else if (bmi < 25) setBmiInterpretation('Normal weight');
+      else if (bmi < 30) setBmiInterpretation('Overweight');
+      else setBmiInterpretation('Obesity');
+    } else {
+      setBmiResult(null);
+      setBmiInterpretation('Please enter valid height and weight values.');
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-4 border rounded-lg bg-card shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Height Input */}
+        <div className="space-y-2">
+          <Label htmlFor="height-unit">Height Unit</Label>
+          <Select value={heightUnit} onValueChange={(value) => setHeightUnit(value as 'cm' | 'ftin')}>
+            <SelectTrigger id="height-unit">
+              <SelectValue placeholder="Select unit" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cm">Centimeters (cm)</SelectItem>
+              <SelectItem value="ftin">Feet & Inches (ft/in)</SelectItem>
+            </SelectContent>
+          </Select>
+          {heightUnit === 'cm' && (
+            <Input
+              id="heightCm"
+              type="number"
+              placeholder="e.g., 170"
+              value={height}
+              onChange={(e) => setHeight(e.target.value)}
+              className="mt-1"
+            />
+          )}
+          {heightUnit === 'ftin' && (
+            <div className="flex gap-2 mt-1">
+              <Input
+                id="heightFt"
+                type="number"
+                placeholder="Feet"
+                value={feet}
+                onChange={(e) => setFeet(e.target.value)}
+              />
+              <Input
+                id="heightIn"
+                type="number"
+                placeholder="Inches"
+                value={inches}
+                onChange={(e) => setInches(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Weight Input */}
+        <div className="space-y-2">
+          <Label htmlFor="weight-unit">Weight Unit</Label>
+          <Select value={weightUnit} onValueChange={(value) => setWeightUnit(value as 'kg' | 'lbs')}>
+            <SelectTrigger id="weight-unit">
+              <SelectValue placeholder="Select unit" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="kg">Kilograms (kg)</SelectItem>
+              <SelectItem value="lbs">Pounds (lbs)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input
+            id="weight"
+            type="number"
+            placeholder={weightUnit === 'kg' ? "e.g., 65" : "e.g., 150"}
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+      </div>
+
+      <Button onClick={calculateBmi} className="w-full sm:w-auto">
+        <Calculator className="mr-2 h-4 w-4" /> Calculate BMI
+      </Button>
+
+      {bmiResult !== null && (
+        <Card className="mt-6 p-4 bg-muted/50">
+          <CardTitle className="text-lg mb-2">Your BMI Result</CardTitle>
+          <p className="text-3xl font-bold text-primary">{bmiResult}</p>
+          <p className="text-md text-muted-foreground mt-1">Interpretation: <span className="font-semibold text-foreground">{bmiInterpretation}</span></p>
+          <CardDescription className="text-xs mt-3">
+            Note: BMI is a general indicator and may not be accurate for all body types (e.g., athletes). Consult a healthcare professional for a comprehensive assessment.
+          </CardDescription>
+        </Card>
+      )}
+      {bmiResult === null && bmiInterpretation && (
+         <p className="text-sm text-destructive mt-2">{bmiInterpretation}</p>
+      )}
+    </div>
+  );
+};
+
+
 const healthResourcesData: HealthResourceContent[] = [
+  {
+    slug: "bmi-calculator",
+    title: "BMI Calculator",
+    icon: Calculator,
+    isTool: true,
+    fullDescription: "Calculate your Body Mass Index (BMI) using your height and weight. BMI is a widely used screening tool to categorize weight status.",
+    details: <BmiCalculator />
+  },
+  {
+    slug: "understanding-body-fat",
+    title: "Understanding Body Fat Percentage",
+    icon: Percent,
+    fullDescription: "Learn about body fat percentage, its importance for health, typical ranges, and common measurement methods.",
+    details: (
+      <div className="space-y-4">
+        <p>Body fat percentage is the proportion of fat your body has compared to other tissues like muscle, bone, and water. It's a more accurate indicator of health than weight alone.</p>
+        <h3 className="font-semibold text-lg mt-3">Why is it Important?</h3>
+        <ul className="list-disc list-inside space-y-2">
+          <li><strong>Health Risks:</strong> Excess body fat, particularly visceral fat (around organs), is linked to increased risk of heart disease, type 2 diabetes, high blood pressure, and certain cancers.</li>
+          <li><strong>Energy Storage:</strong> Fat is essential for storing energy, insulating the body, and protecting organs.</li>
+          <li><strong>Hormone Regulation:</strong> Body fat plays a role in producing and regulating hormones.</li>
+        </ul>
+        <h3 className="font-semibold text-lg mt-3">General Healthy Ranges:</h3>
+        <p className="text-sm text-muted-foreground">(These are general guidelines and can vary based on age, sex, and individual factors. Consult a healthcare provider for personalized advice.)</p>
+        <ul className="list-disc list-inside space-y-2">
+          <li><strong>Men:</strong> Essential fat ~2-5%. Athletes ~6-13%. Fitness ~14-17%. Acceptable ~18-24%. Obesity {'>'}25%.</li>
+          <li><strong>Women:</strong> Essential fat ~10-13%. Athletes ~14-20%. Fitness ~21-24%. Acceptable ~25-31%. Obesity {'>'}32%.</li>
+        </ul>
+        <h3 className="font-semibold text-lg mt-3">Common Measurement Methods:</h3>
+        <ul className="list-disc list-inside space-y-2">
+          <li><strong>Skinfold Calipers:</strong> Measures thickness of subcutaneous fat at specific sites.</li>
+          <li><strong>Bioelectrical Impedance Analysis (BIA):</strong> Sends a small electrical current through the body. Many home scales use this.</li>
+          <li><strong>Dual-Energy X-ray Absorptiometry (DXA/DEXA):</strong> Considered a gold standard, uses X-rays to measure bone density, lean mass, and fat mass.</li>
+          <li><strong>Hydrostatic Weighing (Underwater Weighing):</strong> Measures body density by submerging a person in water.</li>
+          <li><strong>Air Displacement Plethysmography (Bod Pod):</strong> Similar to underwater weighing but uses air displacement.</li>
+        </ul>
+        <p>Online calculators for body fat percentage exist, but their accuracy varies greatly as they often rely on limited inputs (like BMI, age, gender) and estimations. For precise measurements, consult with a healthcare or fitness professional.</p>
+      </div>
+    )
+  },
   {
     slug: "understanding-lab-results",
     title: "Understanding Your Lab Results",
@@ -98,7 +295,7 @@ export default function HealthResourcePage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground mb-6">
-              The health resource you're looking for could not be found.
+              The health resource or tool you're looking for could not be found.
             </p>
             <Button asChild variant="outline">
               <Link href="/patient/dashboard">
@@ -115,9 +312,9 @@ export default function HealthResourcePage() {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <Button asChild variant="outline" size="sm" className="mb-4">
+      <Button asChild variant="outline" size="sm" className="mb-4 group transition-all duration-300 hover:border-primary hover:text-primary active:scale-95">
         <Link href="/patient/dashboard">
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+          <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" /> Back to Dashboard
         </Link>
       </Button>
       <Card className="shadow-xl">
@@ -128,17 +325,10 @@ export default function HealthResourcePage() {
           </div>
           <CardDescription className="text-lg text-muted-foreground">{resource.fullDescription}</CardDescription>
         </CardHeader>
-        <CardContent className="prose dark:prose-invert max-w-none text-foreground text-base leading-relaxed">
-          {/* 
-            Using 'prose' class from @tailwindcss/typography for nice default article styling.
-            Ensure @tailwindcss/typography is installed or adjust styling manually.
-            If not installed, remove 'prose dark:prose-invert' and style manually.
-          */}
+        <CardContent className={resource.isTool ? "" : "prose dark:prose-invert max-w-none text-foreground text-base leading-relaxed"}>
           {resource.details}
         </CardContent>
       </Card>
     </div>
   );
 }
-
-    

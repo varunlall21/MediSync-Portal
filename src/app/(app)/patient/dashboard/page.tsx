@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig, HeartPulse, Brain, FileSpreadsheet, Loader2, AlertTriangle } from "lucide-react";
+import { CalendarDays, Stethoscope, ClipboardList, UserPlus, BarChartHorizontalBig, HeartPulse, Brain, FileSpreadsheet, Loader2, AlertTriangle, Calculator, Percent } from "lucide-react"; // Added Calculator, Percent
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from '@/contexts/auth-context';
@@ -17,16 +17,16 @@ export default function PatientDashboardPage() {
   const [isLoadingAppointment, setIsLoadingAppointment] = useState(true);
   const [appointmentError, setAppointmentError] = useState<string | null>(null);
 
-  const parseTime = useCallback((timeStr: string): number => {
+  const parseTime = useCallback((timeStr: string | undefined | null): number => {
+    if (!timeStr || typeof timeStr !== 'string') return 0;
     const [timePart, modifier] = timeStr.toUpperCase().split(' ');
+    if (!timePart) return 0;
     let [hours, minutes] = timePart.split(':').map(Number);
+    if (isNaN(hours) || isNaN(minutes)) return 0;
 
-    if (modifier === 'PM' && hours < 12) {
-        hours += 12;
-    } else if (modifier === 'AM' && hours === 12) { // Midnight case (12 AM)
-        hours = 0;
-    }
-    return hours * 60 + minutes; // Total minutes from midnight
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    else if (modifier === 'AM' && hours === 12) hours = 0; // Midnight
+    return hours * 60 + minutes;
   }, []);
 
   const fetchNextAppointment = useCallback(async () => {
@@ -55,10 +55,9 @@ export default function PatientDashboardPage() {
           try {
             const appointmentDate = parseISO(appt.date); 
             const today = new Date();
-            const startOfTodayUTC = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-            const isUpcoming = appointmentDate.getTime() >= startOfTodayUTC.getTime();
-            // For detailed debugging of date filtering:
-            // console.log(`[PatientDashboard] Checking Appt ID ${appt.id}: Date: ${appt.date}, ApptDateUTC: ${appointmentDate.toISOString()}, StartTodayUTC: ${startOfTodayUTC.toISOString()}, isUpcoming: ${isUpcoming}`);
+            // Compare only date parts, ignoring time for "today or in future"
+            const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            const isUpcoming = appointmentDate.getTime() >= startOfToday.getTime();
             return isUpcoming;
           } catch (e) {
             console.warn(`[PatientDashboard] Invalid date format for appointment ${appt.id}: ${appt.date}`, e);
@@ -125,10 +124,16 @@ export default function PatientDashboardPage() {
 
   const healthResources = [
     { 
-      title: "Understanding Your Lab Results", 
-      description: "Learn how to interpret common lab test results and what they mean for your health.",
-      icon: FileSpreadsheet,
-      slug: "understanding-lab-results" 
+      title: "BMI Calculator", 
+      description: "Calculate your Body Mass Index to understand your weight category.",
+      icon: Calculator, // New icon
+      slug: "bmi-calculator"  // New slug
+    },
+    { 
+      title: "Understanding Body Fat", 
+      description: "Learn about body fat percentage, its importance, and healthy ranges.",
+      icon: Percent, // New icon
+      slug: "understanding-body-fat" // New slug
     },
     { 
       title: "Tips for a Healthy Heart", 
@@ -137,11 +142,17 @@ export default function PatientDashboardPage() {
       slug: "tips-for-healthy-heart" 
     },
     {
-      title: "Managing Stress for Better Wellness",
+      title: "Managing Stress for Wellness",
       description: "Explore techniques for stress reduction and improving your mental well-being.",
       icon: Brain,
       slug: "managing-stress-for-wellness"
-    }
+    },
+     { 
+      title: "Understanding Your Lab Results", 
+      description: "Learn how to interpret common lab test results and what they mean for your health.",
+      icon: FileSpreadsheet,
+      slug: "understanding-lab-results" 
+    },
   ];
 
   return (
@@ -236,19 +247,19 @@ export default function PatientDashboardPage() {
       <Card className="shadow-lg hover:shadow-xl transition-shadow duration-300">
         <CardHeader>
           <CardTitle className="flex items-center"><Stethoscope className="mr-2 h-5 w-5 text-primary"/> Health Resources</CardTitle>
-          <CardDescription>Find useful health information and tips.</CardDescription>
+          <CardDescription>Find useful health information and tools.</CardDescription>
         </CardHeader>
         <CardContent>
-           <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-4">
+           <div className="grid md:grid-cols-1 lg:grid-cols-3 gap-6"> {/* Increased gap for better spacing */}
             {healthResources.map((resource, index) => (
-              <div key={index} className="p-4 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-all duration-300 hover:border-accent/50 hover:shadow-md flex flex-col">
-                <div className="flex items-center mb-2">
-                  <resource.icon className="h-6 w-6 mr-3 text-primary flex-shrink-0" />
-                  <h3 className="font-semibold text-lg text-foreground">{resource.title}</h3>
+              <div key={index} className="p-5 border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-all duration-300 hover:border-primary/30 hover:shadow-lg flex flex-col"> {/* Enhanced hover */}
+                <div className="flex items-center mb-3">
+                  <resource.icon className="h-7 w-7 mr-3 text-primary flex-shrink-0" /> {/* Slightly larger icon */}
+                  <h3 className="font-semibold text-xl text-foreground">{resource.title}</h3> {/* Larger title */}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1 flex-grow">{resource.description}</p>
-                <Link href={`/patient/health-resources/${resource.slug}`} className="text-sm text-primary hover:underline mt-3 inline-block self-start group">
-                  Read more <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">&rarr;</span>
+                <p className="text-sm text-muted-foreground mt-1 flex-grow mb-3">{resource.description}</p>
+                <Link href={`/patient/health-resources/${resource.slug}`} className="text-sm text-primary hover:underline mt-auto inline-block self-start group font-medium">
+                  {resource.slug.includes('calculator') ? "Open Tool" : "Read more"} <span aria-hidden="true" className="inline-block transition-transform group-hover:translate-x-1 motion-reduce:transform-none">&rarr;</span>
                 </Link>
               </div>
             ))}
