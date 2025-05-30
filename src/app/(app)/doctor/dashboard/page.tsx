@@ -13,7 +13,7 @@ import { format, isToday, parseISO } from 'date-fns';
 interface DoctorDashboardStats {
   todaysAppointmentsCount: number;
   pendingRequestsCount: number;
-  totalPatients: string; 
+  totalPatients: string; // This will remain mock for now
 }
 
 export default function DoctorDashboardPage() {
@@ -22,12 +22,12 @@ export default function DoctorDashboardPage() {
   const [stats, setStats] = useState<DoctorDashboardStats>({
     todaysAppointmentsCount: 0,
     pendingRequestsCount: 0,
-    totalPatients: "157", // This will remain mock for now
+    totalPatients: "157", // Mock value
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const parseTime = useCallback((timeStr: string): number => {
+  const parseTime = useCallback((timeStr: string | undefined | null): number => {
     if (!timeStr || typeof timeStr !== 'string') return 0;
     const [timePart, modifier] = timeStr.toUpperCase().split(' ');
     if (!timePart) return 0;
@@ -40,10 +40,8 @@ export default function DoctorDashboardPage() {
   }, []);
 
   const fetchDashboardData = useCallback(async () => {
-    if (!user || authLoading) {
-      setIsLoading(false);
-      return;
-    }
+    // No need to check for user here if showing system-wide data as per plan.
+    // If true personalization is added later, the `user` check will be important.
     setIsLoading(true);
     setError(null);
 
@@ -51,42 +49,52 @@ export default function DoctorDashboardPage() {
       const allAppointments = await getAppointments();
       
       const today = new Date();
+      // System-wide approved appointments for today
       const todaysApprovedAppointments = allAppointments
         .filter(appt => {
           try {
             return appt.status?.toLowerCase() === 'approved' && isToday(parseISO(appt.date));
-          } catch (e) { console.warn("Invalid date for appointment:", appt); return false; }
+          } catch (e) { 
+            console.warn("[DoctorDashboard] Invalid date for appointment during 'todaysApproved' filter:", appt, e); 
+            return false; 
+          }
         })
         .sort((a, b) => parseTime(a.time) - parseTime(b.time));
       setUpcomingAppointments(todaysApprovedAppointments);
 
+      // System-wide pending requests count
       const pendingCount = allAppointments.filter(appt => appt.status?.toLowerCase() === 'pending').length;
       
       setStats(prevStats => ({
         ...prevStats,
         todaysAppointmentsCount: todaysApprovedAppointments.length,
         pendingRequestsCount: pendingCount,
+        // totalPatients will remain mock as per plan
       }));
 
     } catch (err: any) {
-      console.error("Error fetching doctor dashboard data:", err);
+      console.error("[DoctorDashboard] Error fetching doctor dashboard data:", err);
       setError(err.message || "Could not load dashboard data.");
     } finally {
       setIsLoading(false);
     }
-  }, [user, authLoading, parseTime]);
+  }, [parseTime]); // user and authLoading removed as per "system-wide view for now"
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [fetchDashboardData]);
+    // Fetch data when component mounts, authLoading isn't strictly needed for system-wide view
+    // but good to keep if we switch to personalized view later.
+     if (!authLoading) {
+        fetchDashboardData();
+     }
+  }, [authLoading, fetchDashboardData]);
 
   const statCards = [
-    { title: "Today's Appointments", value: stats.todaysAppointmentsCount.toString(), icon: CalendarDays, color: "text-primary", link: "/doctor/schedule" },
-    { title: "Pending Requests", value: stats.pendingRequestsCount.toString(), icon: Clock, color: "text-yellow-500 dark:text-yellow-400", link: "/doctor/appointments" },
-    { title: "Total Patients Seen", value: stats.totalPatients, icon: Users, color: "text-green-500 dark:text-green-400", link: "/doctor/patients" }, 
+    { title: "Today's Approved Appointments (System-Wide)", value: stats.todaysAppointmentsCount.toString(), icon: CalendarDays, color: "text-primary", link: "/doctor/schedule" },
+    { title: "Pending Requests (System-Wide)", value: stats.pendingRequestsCount.toString(), icon: Clock, color: "text-yellow-500 dark:text-yellow-400", link: "/doctor/appointments" },
+    { title: "Total Patients Seen (Mock)", value: stats.totalPatients, icon: Users, color: "text-green-500 dark:text-green-400", link: "/doctor/patients" }, 
   ];
 
-  if (isLoading || authLoading) {
+  if (isLoading || authLoading) { // Keep authLoading check in case it's reintroduced
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -140,14 +148,14 @@ export default function DoctorDashboardPage() {
       
       <Card className="shadow-lg hover:shadow-xl dark:hover:shadow-primary/20 transition-all duration-300">
         <CardHeader>
-          <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> Today's Approved Appointments</CardTitle>
-          <CardDescription>Approved appointments for today (system-wide view for now).</CardDescription>
+          <CardTitle className="flex items-center"><CalendarDays className="mr-2 h-5 w-5 text-primary" /> Today's Approved Appointments (System-Wide)</CardTitle>
+          <CardDescription>Approved appointments for today across the system.</CardDescription>
         </CardHeader>
         <CardContent>
           {upcomingAppointments.length > 0 ? (
             <ul className="space-y-4">
               {upcomingAppointments.map((appt) => {
-                const patientIdentifier = appt.patient_user_id || appt.patient_name?.toLowerCase().replace(/\s+/g, '-') || 'unknown';
+                const patientIdentifier = appt.patient_user_id || appt.patient_name?.toLowerCase().replace(/\s+/g, '-') || 'unknown-patient';
                 return (
                   <li key={appt.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 rounded-lg border bg-card hover:bg-muted/30 dark:hover:bg-muted/10 transition-colors hover:shadow-md">
                     <div>
@@ -166,7 +174,7 @@ export default function DoctorDashboardPage() {
               })}
             </ul>
           ) : (
-            <p className="text-muted-foreground">No upcoming approved appointments scheduled for today.</p>
+            <p className="text-muted-foreground">No upcoming approved appointments scheduled for today in the system.</p>
           )}
           <div className="mt-6 flex justify-end">
              <Button asChild className="transition-all duration-300 hover:shadow-lg active:scale-95">
@@ -184,17 +192,17 @@ export default function DoctorDashboardPage() {
           <Button variant="outline" className="w-full justify-start text-sm py-3 px-4 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95 group" asChild>
              <Link href="/doctor/patients" className="flex items-center">
                 <Users className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors"/> 
-                <span className="ml-2 truncate">Manage My Patients</span>
+                <span className="ml-2 truncate">Manage Patients (System-Wide List)</span>
              </Link>
           </Button>
           <Button variant="outline" className="w-full justify-start text-sm py-3 px-4 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95 group" asChild>
             <Link href="/doctor/appointments" className="flex items-center">
                 <CheckCircle className="h-5 w-5 text-green-500 dark:text-green-400 group-hover:text-primary transition-colors"/>
-                <span className="ml-2 truncate">Review Pending Appointments</span>
+                <span className="ml-2 truncate">Review Pending Appointments (System-Wide)</span>
             </Link>
           </Button>
            <Button variant="outline" className="w-full justify-start text-sm py-3 px-4 hover:border-primary transition-all duration-300 hover:shadow-md active:scale-95 group" asChild>
-             <Link href="/doctor/schedule" className="flex items-center"> {/* Changed link to schedule */}
+             <Link href="/doctor/schedule" className="flex items-center">
                 <CalendarDays className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors"/>
                 <span className="ml-2 truncate">View Full Schedule</span>
             </Link>
@@ -204,4 +212,6 @@ export default function DoctorDashboardPage() {
     </div>
   );
 }
+    
+
     
